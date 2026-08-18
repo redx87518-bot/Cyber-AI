@@ -1,4 +1,5 @@
 package com.cyberfusion.core.ai.tools
+import java.net.URLEncoder
 
 import com.cyberfusion.core.ai.provider.AITool
 import com.cyberfusion.core.ai.provider.AIToolResult
@@ -598,7 +599,7 @@ object AIToolRegistry {
         val target = parameters["target"] ?: return AIToolResult("rdapLookup", false, "", "Missing target parameter")
         return try {
             val client = com.cyberfusion.core.network.client.CyberFusionHttpClient.client
-            val url = if (target.matches(Regex("^\d+\.\d+\.\d+\.\d+$"))) {
+            val url = if (target.matches(Regex("^\\d+\\.\\d+\\.\\d+\\.\\d+$"))) {
                 "https://rdap.org/ip/$target"
             } else {
                 "https://rdap.org/domain/$target"

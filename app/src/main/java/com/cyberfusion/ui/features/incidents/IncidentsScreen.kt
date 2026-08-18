@@ -1,4 +1,5 @@
 package com.cyberfusion.ui.features.incidents
+import androidx.compose.runtime.getValue
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn

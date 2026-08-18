@@ -55,7 +55,9 @@ object AIToolRegistry {
         AITool("getNvdCve", "Get CVE details from NVD", mapOf("cveId" to "String")),
         AITool("getOtxIntel", "Get OTX threat intelligence for indicator", mapOf("type" to "String", "value" to "String")),
         AITool("scanUrl", "Scan URL with URLScan.io", mapOf("query" to "String")),
-        AITool("getSettings", "Get current settings and API status", emptyMap())
+        AITool("getSettings", "Get current settings and API status", emptyMap()),
+        AITool("dnsLookup", "Perform DNS lookup for domain", mapOf("domain" to "String", "type" to "String?")),
+        AITool("rdapLookup", "Perform RDAP lookup for IP or domain", mapOf("target" to "String"))
     )
 
     suspend fun executeTool(
@@ -88,7 +90,9 @@ object AIToolRegistry {
                 "getNvdCve" -> executeGetNvdCve(parameters, repositories)
                 "getOtxIntel" -> executeGetOtxIntel(parameters, repositories)
                 "scanUrl" -> executeScanUrl(parameters, repositories)
-                "getSettings" -> executeGetSettings(repositories)
+                "getSettings" -> executeGetSettings(repositories),
+                "dnsLookup" -> executeDnsLookup(parameters, repositories),
+                "rdapLookup" -> executeRdapLookup(parameters, repositories)
                 else -> AIToolResult(toolName, false, "", "Unknown tool: $toolName")
             }
         } catch (e: Exception) {
@@ -571,6 +575,40 @@ object AIToolRegistry {
             appendLine("- Complete labs to practice SOC/GRC/ethical hacking skills")
             appendLine("- Use AI chat to analyze alerts and generate reports")
         })
+    }
+
+    private suspend fun executeDnsLookup(parameters: Map<String, String>, repositories: ToolRepositories): AIToolResult {
+        val domain = parameters["domain"] ?: return AIToolResult("dnsLookup", false, "", "Missing domain parameter")
+        val type = parameters["type"] ?: "A"
+        return try {
+            val client = com.cyberfusion.core.network.client.CyberFusionHttpClient.client
+            val response = client.get("https://dns.google/resolve?name=${java.net.URLEncoder.encode(domain, "UTF-8")}&type=$type").text
+            val answers = mutableListOf<String>()
+            val regex = ""data":"([^"]+)"".toRegex().find(response)
+            if (regex != null) {
+                answers.add(regex.groupValues[1])
+            }
+            AIToolResult("dnsLookup", true, "DNS $type records for $domain:\n${answers.joinToString("\n")}")
+        } catch (e: Exception) {
+            AIToolResult("dnsLookup", false, "", "DNS lookup failed: ${e.message}")
+        }
+    }
+
+    private suspend fun executeRdapLookup(parameters: Map<String, String>, repositories: ToolRepositories): AIToolResult {
+        val target = parameters["target"] ?: return AIToolResult("rdapLookup", false, "", "Missing target parameter")
+        return try {
+            val client = com.cyberfusion.core.network.client.CyberFusionHttpClient.client
+            val url = if (target.matches(Regex("^\d+\.\d+\.\d+\.\d+$"))) {
+                "https://rdap.org/ip/$target"
+            } else {
+                "https://rdap.org/domain/$target"
+            }
+            val response = client.get(url).text
+            val summary = response.take(500)
+            AIToolResult("rdapLookup", true, "RDAP lookup for $target:\n$summary")
+        } catch (e: Exception) {
+            AIToolResult("rdapLookup", false, "", "RDAP lookup failed: ${e.message}")
+        }
     }
 
     private fun detectIocType(value: String): String {

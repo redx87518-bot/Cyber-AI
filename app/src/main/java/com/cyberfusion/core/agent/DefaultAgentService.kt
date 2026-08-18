@@ -8,6 +8,8 @@ import com.cyberfusion.core.database.room.entity.ConversationEntity
 import com.cyberfusion.core.database.room.entity.MessageEntity
 import com.cyberfusion.core.database.room.repository.ConversationRepository
 import com.cyberfusion.core.database.room.repository.SettingsRepository
+import com.cyberfusion.core.evidence.EvidenceManager
+import com.cyberfusion.core.evidence.EvidenceItem
 import com.cyberfusion.core.utils.PdfReportGenerator
 import com.cyberfusion.core.utils.PdfUtils
 import com.cyberfusion.core.report.AgentReport
@@ -45,6 +47,7 @@ class DefaultAgentService(
             status = AgentStatus.RUNNING
         )
         taskStore[taskId] = task
+        EvidenceManager.clearTask(taskId)
         
         emitEvent(AgentEvent(taskId = taskId, eventType = AgentEventType.TASK_CREATED, agent = "Orchestrator", tool = null, status = AgentStepStatus.RUNNING))
         
@@ -59,8 +62,9 @@ class DefaultAgentService(
             
             val toolResults = mutableListOf<String>()
             val timeline = mutableListOf<String>()
-            var stepStartTime = System.currentTimeMillis()
+            val evidenceItems = mutableListOf<EvidenceItem>()
             val toolsUsed = mutableListOf<String>()
+            var stepStartTime = System.currentTimeMillis()
             
             for (step in plan.steps) {
                 emitEvent(AgentEvent(taskId = taskId, eventType = AgentEventType.TOOL_EXECUTION, agent = step.agent, tool = step.tool, status = AgentStepStatus.RUNNING))
@@ -73,6 +77,19 @@ class DefaultAgentService(
                     toolResults.add("${step.tool ?: "analysis"}: ${result.result}")
                     toolsUsed.add(step.tool ?: "analysis")
                     timeline.add("${dateFormat.format(Date(stepStartTime))} - ${step.description} (SUCCESS, ${duration}ms)")
+                    
+                    val evidence = EvidenceItem(
+                        id = UUID.randomUUID().toString(),
+                        taskId = taskId,
+                        type = "tool_output",
+                        source = step.tool ?: "analysis",
+                        content = result.result ?: "",
+                        confidence = if (result.error == null) 80.0 else 40.0,
+                        verified = result.error == null
+                    )
+                    evidenceItems.add(evidence)
+                    EvidenceManager.addEvidence(taskId, evidence)
+                    
                     emitEvent(AgentEvent(taskId = taskId, eventType = AgentEventType.STEP_COMPLETED, agent = step.agent, tool = step.tool, status = AgentStepStatus.SUCCESS, durationMs = duration, details = mapOf("result" to (result.result?.take(200) ?: ""))))
                 } else {
                     timeline.add("${dateFormat.format(Date(stepStartTime))} - ${step.description} (FAILED, ${duration}ms)")
@@ -80,10 +97,11 @@ class DefaultAgentService(
                 }
             }
             
-            finalResult = synthesizeResult(request.prompt, toolResults, provider)
+            val confidence = EvidenceManager.calculateTaskConfidence(taskId)
+            val finalResult = synthesizeResult(request.prompt, toolResults, evidenceItems, confidence, provider)
             
             val report = if (request.requireReport || request.requirePdf) {
-                generateReport(taskId, request.prompt, finalResult, toolResults, plan, timeline, toolsUsed)
+                generateReport(taskId, request.prompt, finalResult, toolResults, plan, timeline, toolsUsed, evidenceItems, confidence)
             } else null
             
             val response = AgentResponse(
@@ -185,7 +203,7 @@ class DefaultAgentService(
         }
     }
     
-    private suspend fun synthesizeResult(prompt: String, toolResults: List<String>, provider: AIProviderConfig): String {
+    private suspend fun synthesizeResult(prompt: String, toolResults: List<String>, evidenceItems: List<EvidenceItem>, confidence: Double, provider: AIProviderConfig): String {
         if (toolResults.isEmpty()) {
             val adapter = AIProviderFactory().create(provider)
             val result = adapter.chat(listOf(com.cyberfusion.core.ai.provider.Message(role = "user", content = prompt)))
@@ -193,11 +211,17 @@ class DefaultAgentService(
         }
         
         val combined = toolResults.joinToString("\n\n")
+        val evidenceSummary = evidenceItems.joinToString("\n") { "- [${it.source}] Confidence: ${it.confidence}%, Verified: ${it.verified}" }
         val summaryPrompt = buildString {
             appendLine("You are CyberFusion AI, an autonomous cybersecurity agent.")
             appendLine("User asked: $prompt")
             appendLine("Tools executed and results:")
             appendLine(combined)
+            appendLine()
+            appendLine("Evidence collected:")
+            appendLine(evidenceSummary)
+            appendLine()
+            appendLine("Overall confidence: ${confidence.toInt()}%")
             appendLine()
             appendLine("Provide a concise, actionable cybersecurity analysis with:")
             appendLine("1. Executive summary")
@@ -211,7 +235,7 @@ class DefaultAgentService(
         return result.getOrElse { "Tool execution completed, but AI summarization failed: ${it.message}" }
     }
     
-    private suspend fun generateReport(taskId: String, prompt: String, result: String, toolResults: List<String>, plan: AgentPlan, timeline: List<String>, toolsUsed: List<String>): AgentReport {
+    private suspend fun generateReport(taskId: String, prompt: String, result: String, toolResults: List<String>, plan: AgentPlan, timeline: List<String>, toolsUsed: List<String>, evidenceItems: List<EvidenceItem>, confidence: Double): AgentReport {
         val reportId = "RPT-$taskId-${System.currentTimeMillis()}"
         val findings = toolResults.mapIndexed { index, result ->
             AgentFinding(
@@ -219,16 +243,16 @@ class DefaultAgentService(
                 title = "Finding $index",
                 description = result.take(500),
                 severity = "MEDIUM",
-                confidence = 75
+                confidence = confidence.toInt()
             )
         }
         
-        val evidence = toolResults.map { result ->
+        val evidence = evidenceItems.map { item ->
             AgentEvidence(
-                id = UUID.randomUUID().toString(),
-                type = "tool_output",
-                source = "agent",
-                content = result.take(1000)
+                id = item.id,
+                type = item.type,
+                source = item.source,
+                content = item.content.take(1000)
             )
         }
         
@@ -240,14 +264,16 @@ class DefaultAgentService(
             evidence = evidence,
             recommendations = listOf("Review findings", "Apply recommended actions"),
             severity = "MEDIUM",
-            confidence = 75,
+            confidence = confidence.toInt(),
             methodology = "Automated agent investigation",
             metadata = mapOf(
                 "userRequest" to prompt,
                 "scope" to "Investigation as requested",
                 "plan" to plan.steps.joinToString("\n") { "${it.stepId}. ${it.description} (${it.agent})" },
                 "toolsUsed" to toolsUsed.joinToString(", "),
-                "timeline" to timeline.joinToString("\n")
+                "timeline" to timeline.joinToString("\n"),
+                "evidenceCount" to evidenceItems.size.toString(),
+                "verifiedEvidenceCount" to evidenceItems.count { it.verified }.toString()
             )
         )
         

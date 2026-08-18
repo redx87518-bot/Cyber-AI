@@ -585,7 +585,7 @@ object AIToolRegistry {
         val type = parameters["type"] ?: "A"
         return try {
             val client = com.cyberfusion.core.network.client.CyberFusionHttpClient.client
-            val response = client.get("https://dns.google/resolve?name=${java.net.URLEncoder.encode(domain, "UTF-8")}&type=$type").text
+            val response = client.get("https://dns.google/resolve?name=${java.net.URLEncoder.encode(domain, "UTF-8")}&type=$type").body<String>()
             val answers = mutableListOf<String>()
             val regex = "\"data\":\"([^\"]+)\"".toRegex().find(response)
             if (regex != null) {
@@ -606,7 +606,7 @@ object AIToolRegistry {
             } else {
                 "https://rdap.org/domain/$target"
             }
-            val response = client.get(url).text
+            val response = client.get(url).body<String>()
             val summary = response.take(500)
             AIToolResult("rdapLookup", true, "RDAP lookup for $target:\n$summary")
         } catch (e: Exception) {

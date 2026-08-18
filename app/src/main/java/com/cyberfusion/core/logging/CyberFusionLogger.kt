@@ -52,3 +52,4 @@ object CyberFusionLogger {
         isDebug = enabled
     }
 }
+ 

@@ -10,22 +10,22 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.cyberfusion.ui.components.CyberFusionBottomBar
 import com.cyberfusion.ui.theme.Gold
 import kotlinx.coroutines.launch
 
 @Composable
-fun ChatScreen(navController: NavController) {
-    var messages by remember { mutableStateOf(listOf(ChatMessage("ai", "Hello, Analyst. How can I assist you today?"))) }
+fun ChatScreen(navController: NavController, viewModel: ChatViewModel = viewModel()) {
+    val uiState by viewModel.uiState.collectAsState()
     var input by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -40,7 +40,7 @@ fun ChatScreen(navController: NavController) {
                 modifier = Modifier.weight(1f).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(messages) { msg ->
+                items(uiState.messages) { msg ->
                     val isUser = msg.role == "user"
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -58,7 +58,32 @@ fun ChatScreen(navController: NavController) {
                         }
                     }
                 }
+                if (uiState.isLoading) {
+                    item {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Text(
+                                    text = "Thinking...",
+                                    modifier = Modifier.padding(12.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
             }
+
+            uiState.error?.let { error ->
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -71,21 +96,20 @@ fun ChatScreen(navController: NavController) {
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Gold)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                IconButton(onClick = {
-                    if (input.isNotBlank()) {
-                        messages = messages + ChatMessage("user", input)
-                        val userInput = input
-                        input = ""
-                        scope.launch {
-                            messages = messages + ChatMessage("ai", "I received: $userInput. AI task execution is not yet configured.")
+                IconButton(
+                    onClick = {
+                        if (input.isNotBlank()) {
+                            scope.launch {
+                                viewModel.sendMessage(input)
+                                input = ""
+                            }
                         }
-                    }
-                }) {
+                    },
+                    enabled = !uiState.isLoading && input.isNotBlank()
+                ) {
                     Icon(Icons.Default.Send, contentDescription = "Send", tint = Gold)
                 }
             }
         }
     }
 }
-
-data class ChatMessage(val role: String, val content: String)

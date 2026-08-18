@@ -94,6 +94,9 @@ class ThreatIntelViewModel(
                         is ApiResult.Error -> {
                             _uiState.value = _uiState.value.copy(error = "AbuseIPDB: ${result.message}")
                         }
+                        else -> {
+                            _uiState.value = _uiState.value.copy(error = "AbuseIPDB: Unexpected response")
+                        }
                     }
                 }
 
@@ -119,6 +122,9 @@ class ThreatIntelViewModel(
                         }
                         is ApiResult.Error -> {
                             _uiState.value = _uiState.value.copy(error = "ThreatFox: ${result.message}")
+                        }
+                        else -> {
+                            _uiState.value = _uiState.value.copy(error = "ThreatFox: Unexpected response")
                         }
                     }
                 }
@@ -146,6 +152,9 @@ class ThreatIntelViewModel(
                         is ApiResult.Error -> {
                             _uiState.value = _uiState.value.copy(error = "MalwareBazaar: ${result.message}")
                         }
+                        else -> {
+                            _uiState.value = _uiState.value.copy(error = "MalwareBazaar: Unexpected response")
+                        }
                     }
                 }
 
@@ -171,6 +180,9 @@ class ThreatIntelViewModel(
                         }
                         is ApiResult.Error -> {
                             _uiState.value = _uiState.value.copy(error = "NVD: ${result.message}")
+                        }
+                        else -> {
+                            _uiState.value = _uiState.value.copy(error = "NVD: Unexpected response")
                         }
                     }
                 }

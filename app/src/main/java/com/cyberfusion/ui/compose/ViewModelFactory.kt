@@ -9,10 +9,11 @@ val LocalViewModelFactory = compositionLocalOf<ViewModelFactory> {
 }
 
 class ViewModelFactory(
-    private val database: com.cyberfusion.core.database.room.CyberFusionDatabase
+    private val database: CyberFusionDatabase,
+    private val appContext: android.content.Context
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        val repositories = Repositories(database)
+        val repositories = Repositories(database, appContext)
         return when {
             modelClass.isAssignableFrom(com.cyberfusion.ui.features.ai.ChatViewModel::class.java) ->
                 @Suppress("UNCHECKED_CAST")
@@ -31,12 +32,12 @@ class ViewModelFactory(
     }
 }
 
-class Repositories(private val database: com.cyberfusion.core.database.room.CyberFusionDatabase) {
+class Repositories(private val database: CyberFusionDatabase, private val appContext: android.content.Context) {
     val settingsRepository: com.cyberfusion.core.database.room.repository.SettingsRepository by lazy {
         com.cyberfusion.core.database.room.repository.SettingsRepository(database.settingsDao())
     }
     val secureStorage: com.cyberfusion.core.security.SecureStorage by lazy {
-        com.cyberfusion.core.security.SecureStorage(database)
+        com.cyberfusion.core.security.SecureStorage(appContext, settingsRepository)
     }
     val labsRepository: com.cyberfusion.core.database.room.repository.LabsRepository by lazy {
         com.cyberfusion.core.database.room.repository.LabsRepository(database.labsDao())
@@ -45,7 +46,12 @@ class Repositories(private val database: com.cyberfusion.core.database.room.Cybe
         com.cyberfusion.core.database.room.repository.AlertRepository(database.alertsDao())
     }
     val investigationRepository: com.cyberfusion.core.database.room.repository.InvestigationRepository by lazy {
-        com.cyberfusion.core.database.room.repository.InvestigationRepository(database.investigationsDao(), database.investigationNotesDao(), database.investigationTimelineDao())
+        com.cyberfusion.core.database.room.repository.InvestigationRepository(
+            database.investigationsDao(),
+            database.investigationNotesDao(),
+            database.investigationTimelineDao(),
+            database.evidenceDao()
+        )
     }
     val iocRepository: com.cyberfusion.core.database.room.repository.IocRepository by lazy {
         com.cyberfusion.core.database.room.repository.IocRepository(database.iocDao(), database.iocEnrichmentDao())

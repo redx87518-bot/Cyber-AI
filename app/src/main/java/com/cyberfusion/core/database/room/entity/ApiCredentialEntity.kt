@@ -9,7 +9,10 @@ data class ApiCredentialEntity(
     val id: Long = 0,
     val provider: String,
     val apiKey: String,
+    val model: String = "",
     val isEnabled: Boolean = true,
+    val isPrimary: Boolean = false,
+    val isFallback: Boolean = false,
     val status: String = "unknown",
     val updatedAt: Long = System.currentTimeMillis()
 )

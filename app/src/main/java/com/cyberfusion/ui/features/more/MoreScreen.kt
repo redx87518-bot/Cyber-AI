@@ -28,6 +28,7 @@ fun MoreScreen(navController: NavController) {
         MoreItem("Reports", Icons.Default.Description, "reports"),
         MoreItem("Tools", Icons.Default.Build, "tools"),
         MoreItem("AI Models", Icons.Default.Computer, "ai_models"),
+        MoreItem("Diagnostics", Icons.Default.Security, "diagnostics"),
         MoreItem("Settings", Icons.Default.Settings, "settings")
     )
     

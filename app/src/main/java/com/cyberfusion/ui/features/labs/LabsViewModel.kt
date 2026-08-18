@@ -76,7 +76,7 @@ class LabsViewModel(
                 difficulty = labContent.difficulty,
                 scenario = labContent.scenario,
                 evidence = labContent.evidence,
-                questions = kotlinx.serialization.json.Json.encodeToList(labContent.questions),
+                questions = kotlinx.serialization.json.Json.encodeToString(labContent.questions),
                 hints = kotlinx.serialization.json.Json.encodeToString(labContent.hints),
                 createdAt = System.currentTimeMillis()
             )

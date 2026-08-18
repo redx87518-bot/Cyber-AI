@@ -14,8 +14,8 @@ import com.cyberfusion.ui.theme.Gold
 import kotlinx.coroutines.launch
 
 @Composable
-fun LabDetailScreen(navController: NavController, labId: Long, viewModel: LabsViewModel = viewModel()) {
-    val labContent = viewModel.getLabContent(labId)
+fun LabDetailScreen(navController: NavController, labId: Long, labsViewModel: LabsViewModel = viewModel()) {
+    val labContent = labsViewModel.getLabContent(labId)
     var selectedAnswers by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }
     var showResult by remember { mutableStateOf(false) }
     var score by remember { mutableIntStateOf(0) }

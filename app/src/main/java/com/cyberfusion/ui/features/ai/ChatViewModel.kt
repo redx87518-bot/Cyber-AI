@@ -150,13 +150,15 @@ class ChatViewModel(
                 var maxIterations = 10
                 var iteration = 0
                 var currentMessages = conversationHistory
+                var shouldContinue = true
                 
-                while (iteration < maxIterations) {
+                while (shouldContinue && iteration < maxIterations) {
                     iteration++
                     val adapter = factory.create(provider)
                     val result = adapter.chat(currentMessages, tools)
                     
-                    result.onSuccess { response ->
+                    if (result.isSuccess) {
+                        val response = result.getOrNull()!!
                         if (response.startsWith("[TOOL_CALLS:")) {
                             val toolCallsStr = response.removePrefix("[TOOL_CALLS:").removeSuffix("]")
                             val toolCallList = toolCallsStr.split("\n").filter { it.isNotBlank() }
@@ -193,11 +195,11 @@ class ChatViewModel(
                             currentMessages = currentMessages + toolResults
                         } else {
                             finalResponse = response
-                            break
+                            shouldContinue = false
                         }
-                    }.onFailure { error ->
-                        finalResponse = "Error: ${error.message}"
-                        break
+                    } else {
+                        finalResponse = "Error: ${result.exceptionOrNull()?.message}"
+                        shouldContinue = false
                     }
                 }
                 

@@ -41,7 +41,7 @@ class AITaskEngine(private val aiRepository: AiRepository) {
 
             if (toolCalls.isEmpty()) {
                 emit(AIResult.Processing("Running AI analysis..."))
-                val aiResponse = adapter.chat(buildCareerPrompt(prompt))
+                val aiResponse = adapter.chat(listOf(com.cyberfusion.core.ai.provider.Message(role = "user", content = buildCareerPrompt(prompt))))
                 val resultText = aiResponse.getOrElse { "AI analysis failed: ${it.message}" }
                 emit(AIResult.Success(resultText))
                 aiRepository.updateTaskStatus(taskId, "completed", resultText.take(500))
@@ -82,7 +82,7 @@ class AITaskEngine(private val aiRepository: AiRepository) {
                 appendLine("4. Career learning notes (explain what a SOC analyst, GRC specialist, or ethical hacker should learn from this)")
             }
 
-            val summaryResult = adapter.chat(summaryPrompt)
+            val summaryResult = adapter.chat(listOf(com.cyberfusion.core.ai.provider.Message(role = "user", content = summaryPrompt)))
             val finalResponse = summaryResult.getOrElse { "Tool execution completed, but AI summarization failed: ${it.message}" }
 
             emit(AIResult.Success(finalResponse))

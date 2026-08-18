@@ -473,3 +473,4 @@ class LocalAIAdapter(private val config: AIProviderConfig) : AIProviderAdapter {
         }
     }
 }
+ 

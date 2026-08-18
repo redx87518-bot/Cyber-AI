@@ -35,3 +35,4 @@ Users can:
 - Open PDF directly
 - Share via Android share sheet
 - Regenerate if needed
+ 

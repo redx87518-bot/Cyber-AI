@@ -147,13 +147,15 @@ class DefaultAgentService(
     private suspend fun loadProvider(): AIProviderConfig? {
         return try {
             val credentials = settingsRepository.allCredentials.first()
-            val providerCreds = credentials.filter { it.provider in listOf("openrouter", "groq", "gemini", "openai") }
-            val cred = providerCreds.firstOrNull { true } ?: return null
+            val providerCreds = credentials.filter { it.provider in listOf("openrouter", "groq", "gemini", "openai") && it.isEnabled }
+            if (providerCreds.isEmpty()) return null
+            val cred = providerCreds.firstOrNull { it.isPrimary } ?: providerCreds.first()
+            val model = cred.model.ifBlank { getDefaultModel(cred.provider) }
             AIProviderConfig(
                 id = cred.provider,
                 name = cred.provider,
                 apiKey = cred.apiKey,
-                model = getDefaultModel(cred.provider),
+                model = model,
                 isEnabled = cred.isEnabled
             )
         } catch (e: Exception) {

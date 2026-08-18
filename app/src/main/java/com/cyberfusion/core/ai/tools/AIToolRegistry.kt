@@ -59,6 +59,8 @@ object AIToolRegistry {
         AITool("getOtxIntel", "Get OTX threat intelligence for indicator", mapOf("type" to "String", "value" to "String")),
         AITool("scanUrl", "Scan URL with URLScan.io", mapOf("query" to "String")),
         AITool("getSettings", "Get current settings and API status", emptyMap()),
+        AITool("mitreLookup", "Lookup MITRE ATT\AITool("getSettings", "Get current settings and API status", emptyMap())CK technique", mapOf("techniqueId" to "String")),
+        AITool("iso27001Lookup", "Lookup ISO 27001 control", mapOf("controlId" to "String")),
         AITool("dnsLookup", "Perform DNS lookup for domain", mapOf("domain" to "String", "type" to "String?")),
         AITool("rdapLookup", "Perform RDAP lookup for IP or domain", mapOf("target" to "String"))
     )
@@ -95,7 +97,9 @@ object AIToolRegistry {
                 "scanUrl" -> executeScanUrl(parameters, repositories)
                 "getSettings" -> executeGetSettings(repositories)
                 "dnsLookup" -> executeDnsLookup(parameters, repositories)
-                "rdapLookup" -> executeRdapLookup(parameters, repositories)
+                "rdapLookup" -> executeRdapLookup(parameters, repositories),
+                "mitreLookup" -> executeMitreLookup(parameters, repositories),
+                "iso27001Lookup" -> executeIso27001Lookup(parameters, repositories)
                 else -> AIToolResult(toolName, false, "", "Unknown tool: $toolName")
             }
         } catch (e: Exception) {
@@ -612,6 +616,34 @@ object AIToolRegistry {
         } catch (e: Exception) {
             AIToolResult("rdapLookup", false, "", "RDAP lookup failed: ${e.message}")
         }
+    }
+
+    private suspend fun executeMitreLookup(parameters: Map<String, String>, repositories: ToolRepositories): AIToolResult {
+        val techniqueId = parameters["techniqueId"] ?: return AIToolResult("mitreLookup", false, "", "Missing techniqueId parameter")
+        val mitreData = mapOf(
+            "T1566" to "Phishing: Spearphishing Attachment - ATT&CK ID T1566, Enterprise tactic: Initial Access",
+            "T1059" to "Command and Scripting Interpreter - ATT&CK ID T1059, Enterprise tactic: Execution",
+            "T1078" to "Valid Accounts - ATT&CK ID T1078, Enterprise tactic: Defense Evasion, Persistence, Privilege Escalation, Initial Access",
+            "T1041" to "Exfiltration Over C2 Channel - ATT&CK ID T1041, Enterprise tactic: Exfiltration",
+            "T1055" to "Process Injection - ATT&CK ID T1055, Enterprise tactic: Defense Evasion, Privilege Escalation",
+            "T1486" to "Data Encrypted for Impact - ATT&CK ID T1486, Enterprise tactic: Impact"
+        )
+        val result = mitreData[techniqueId.uppercase()] ?: "Technique $techniqueId not found in local MITRE ATT&CK reference. Visit https://attack.mitre.org for full details."
+        return AIToolResult("mitreLookup", true, result)
+    }
+
+    private suspend fun executeIso27001Lookup(parameters: Map<String, String>, repositories: ToolRepositories): AIToolResult {
+        val controlId = parameters["controlId"] ?: return AIToolResult("iso27001Lookup", false, "", "Missing controlId parameter")
+        val isoData = mapOf(
+            "A.9" to "Access Control - ISO 27001:2022 Annex A control A.9. Access control policy and procedures",
+            "A.10" to "Cryptography - ISO 27001:2022 Annex A control A.10. Cryptography and key management",
+            "A.12" to "Operations Security - ISO 27001:2022 Annex A control A.12. Logging and monitoring",
+            "A.13" to "Communications Security - ISO 27001:2022 Annex A control A.13. Network security",
+            "A.15" to "Supplier Relationships - ISO 27001:2022 Annex A control A.15. Supplier security",
+            "A.17" to "Information Security Aspects of Business Continuity - ISO 27001:2022 Annex A control A.17. BCM and ISMS resilience"
+        )
+        val result = isoData[controlId.uppercase()] ?: "Control $controlId not found in local ISO 27001:2022 reference. Consult the official ISO 27001 standard for details."
+        return AIToolResult("iso27001Lookup", true, result)
     }
 
     private fun detectIocType(value: String): String {

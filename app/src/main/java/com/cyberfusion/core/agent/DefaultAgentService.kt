@@ -64,6 +64,8 @@ class DefaultAgentService(
             val timeline = mutableListOf<String>()
             val evidenceItems = mutableListOf<EvidenceItem>()
             val toolsUsed = mutableListOf<String>()
+            val mitreMappings = mutableListOf<String>()
+            val isoControls = mutableListOf<String>()
             var stepStartTime = System.currentTimeMillis()
             
             for (step in plan.steps) {
@@ -90,6 +92,13 @@ class DefaultAgentService(
                     evidenceItems.add(evidence)
                     EvidenceManager.addEvidence(taskId, evidence)
                     
+                    if (step.tool == "mitreLookup") {
+                        result.result?.let { mitreMappings.add(it) }
+                    }
+                    if (step.tool == "iso27001Lookup") {
+                        result.result?.let { isoControls.add(it) }
+                    }
+                    
                     emitEvent(AgentEvent(taskId = taskId, eventType = AgentEventType.STEP_COMPLETED, agent = step.agent, tool = step.tool, status = AgentStepStatus.SUCCESS, durationMs = duration, details = mapOf("result" to (result.result?.take(200) ?: ""))))
                 } else {
                     timeline.add("${dateFormat.format(Date(stepStartTime))} - ${step.description} (FAILED, ${duration}ms)")
@@ -98,10 +107,10 @@ class DefaultAgentService(
             }
             
             val confidence = EvidenceManager.calculateTaskConfidence(taskId)
-            val finalResult = synthesizeResult(request.prompt, toolResults, evidenceItems, confidence, provider)
+            finalResult = synthesizeResult(request.prompt, toolResults, evidenceItems, confidence, provider)
             
             val report = if (request.requireReport || request.requirePdf) {
-                generateReport(taskId, request.prompt, finalResult, toolResults, plan, timeline, toolsUsed, evidenceItems, confidence)
+                generateReport(taskId, request.prompt, finalResult, toolResults, plan, timeline, toolsUsed, evidenceItems, confidence, mitreMappings, isoControls)
             } else null
             
             val response = AgentResponse(
@@ -183,8 +192,14 @@ class DefaultAgentService(
         if (lower.contains("malware") || lower.contains("hash")) {
             steps.add(AgentPlanStep("6", "Query MalwareBazaar", "Threat Intelligence Agent", "queryMalwareBazaar"))
         }
+        if (lower.contains("mitre") || lower.contains("attack") || lower.contains("technique")) {
+            steps.add(AgentPlanStep("7", "Map MITRE ATT&CK", "Threat Intelligence Agent", "mitreLookup"))
+        }
+        if (lower.contains("iso") || lower.contains("27001") || lower.contains("control")) {
+            steps.add(AgentPlanStep("8", "Map ISO 27001", "GRC Agent", "iso27001Lookup"))
+        }
         if (lower.contains("report") || lower.contains("pdf")) {
-            steps.add(AgentPlanStep("7", "Generate report", "Report Agent", "generateReport"))
+            steps.add(AgentPlanStep("9", "Generate report", "Report Agent", "generateReport"))
         }
         
         if (steps.isEmpty()) {
@@ -235,7 +250,7 @@ class DefaultAgentService(
         return result.getOrElse { "Tool execution completed, but AI summarization failed: ${it.message}" }
     }
     
-    private suspend fun generateReport(taskId: String, prompt: String, result: String, toolResults: List<String>, plan: AgentPlan, timeline: List<String>, toolsUsed: List<String>, evidenceItems: List<EvidenceItem>, confidence: Double): AgentReport {
+    private suspend fun generateReport(taskId: String, prompt: String, result: String, toolResults: List<String>, plan: AgentPlan, timeline: List<String>, toolsUsed: List<String>, evidenceItems: List<EvidenceItem>, confidence: Double, mitreMappings: List<String>, isoControls: List<String>): AgentReport {
         val reportId = "RPT-$taskId-${System.currentTimeMillis()}"
         val findings = toolResults.mapIndexed { index, result ->
             AgentFinding(
@@ -266,6 +281,8 @@ class DefaultAgentService(
             severity = "MEDIUM",
             confidence = confidence.toInt(),
             methodology = "Automated agent investigation",
+            mitreAttack = mitreMappings,
+            iso27001Controls = isoControls,
             metadata = mapOf(
                 "userRequest" to prompt,
                 "scope" to "Investigation as requested",

@@ -117,6 +117,7 @@ class OpenRouterAdapter(private val config: AIProviderConfig) : AIProviderAdapte
                                 "required" to JsonArray(it.parameters.keys.map { JsonPrimitive(it) })
                             )
                         )
+                    )
                 )
             }
             

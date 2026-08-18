@@ -19,7 +19,7 @@ object CyberFusionHttpClient {
             level = LogLevel.INFO
             logger = object : Logger {
                 override fun log(message: String) {
-                    com.cyberfusion.core.logging.CyberFusionLogger.d("HttpClient", message)
+                    com.cyberfusion.core.logging.CyberFusionLogger.d("HttpClient: $message")
                 }
             }
         }

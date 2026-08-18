@@ -17,3 +17,4 @@ abstract class BaseAgent(
         return allowedTools.contains(tool)
     }
 }
+ 

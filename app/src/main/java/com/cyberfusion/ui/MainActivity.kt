@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val database = (application as com.cyberfusion.CyberFusionApplication).database
-        val factory = ViewModelFactory(database)
+        val factory = ViewModelFactory(database, applicationContext)
         
         setContent {
             CyberFusionTheme {

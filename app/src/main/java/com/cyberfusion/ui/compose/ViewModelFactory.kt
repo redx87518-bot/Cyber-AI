@@ -3,6 +3,7 @@ package com.cyberfusion.ui.compose
 import androidx.compose.runtime.compositionLocalOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.cyberfusion.core.ai.tools.ToolRepositories
 
 val LocalViewModelFactory = compositionLocalOf<ViewModelFactory> {
     error("No ViewModelFactory provided")
@@ -14,10 +15,22 @@ class ViewModelFactory(
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         val repositories = Repositories(database, appContext)
+        val toolRepositories = ToolRepositories(
+            alertRepository = repositories.alertRepository,
+            investigationRepository = repositories.investigationRepository,
+            iocRepository = repositories.iocRepository,
+            threatIntelRepository = repositories.threatIntelRepository,
+            incidentRepository = repositories.incidentRepository,
+            labsRepository = repositories.labsRepository,
+            grcRepository = repositories.grcRepository,
+            reportRepository = repositories.reportRepository,
+            aiRepository = repositories.aiRepository,
+            settingsRepository = repositories.settingsRepository
+        )
         return when {
             modelClass.isAssignableFrom(com.cyberfusion.ui.features.ai.ChatViewModel::class.java) ->
                 @Suppress("UNCHECKED_CAST")
-                com.cyberfusion.ui.features.ai.ChatViewModel(repositories.settingsRepository) as T
+                com.cyberfusion.ui.features.ai.ChatViewModel(repositories.settingsRepository, toolRepositories) as T
             modelClass.isAssignableFrom(com.cyberfusion.ui.features.threatintel.ThreatIntelViewModel::class.java) ->
                 @Suppress("UNCHECKED_CAST")
                 com.cyberfusion.ui.features.threatintel.ThreatIntelViewModel(repositories.settingsRepository) as T

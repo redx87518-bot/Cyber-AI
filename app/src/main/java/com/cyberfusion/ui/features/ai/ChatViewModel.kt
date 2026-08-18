@@ -2,8 +2,10 @@ package com.cyberfusion.ui.features.ai
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cyberfusion.core.ai.engine.AITaskEngine
 import com.cyberfusion.core.ai.provider.AIProviderConfig
 import com.cyberfusion.core.ai.provider.AIProviderFactory
+import com.cyberfusion.core.ai.tools.ToolRepositories
 import com.cyberfusion.core.database.room.entity.ApiCredentialEntity
 import com.cyberfusion.core.database.room.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,19 +17,21 @@ import kotlinx.coroutines.launch
 data class ChatMessage(val role: String, val content: String)
 
 data class ChatUiState(
-    val messages: List<ChatMessage> = listOf(ChatMessage("ai", "Hello, Analyst. How can I assist you today?")),
+    val messages: List<ChatMessage> = listOf(ChatMessage("ai", "Hello, Analyst. I am CyberFusion AI, your cybersecurity career assistant. I can help with SOC analysis, GRC security, and ethical hacking. How can I assist you today?")),
     val isLoading: Boolean = false,
     val error: String? = null
 )
 
 class ChatViewModel(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val repositories: ToolRepositories
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     private var primaryProvider: AIProviderConfig? = null
     private var fallbackProvider: AIProviderConfig? = null
+    private val taskEngine = AITaskEngine(repositories.aiRepository)
 
     init {
         loadProviders()
@@ -85,30 +89,39 @@ class ChatViewModel(
         viewModelScope.launch {
             val provider = primaryProvider ?: fallbackProvider
             if (provider == null || provider.apiKey.isBlank()) {
+                val noKeyMessage = "No AI provider configured. Please add an API key in Settings to enable AI-powered security analysis, SOC triage, GRC assessment, and ethical hacking guidance."
                 _uiState.value = _uiState.value.copy(
-                    messages = _uiState.value.messages + ChatMessage("ai", "No AI provider configured. Please add an API key in Settings."),
+                    messages = _uiState.value.messages + ChatMessage("ai", noKeyMessage),
                     isLoading = false
                 )
                 return@launch
             }
 
             try {
-                val factory = AIProviderFactory()
-                val adapter = factory.create(provider)
-                val prompt = buildPrompt(_uiState.value.messages, userMessage)
-                val result = adapter.chat(prompt)
-
-                result.onSuccess { response ->
-                    _uiState.value = _uiState.value.copy(
-                        messages = _uiState.value.messages + ChatMessage("ai", response),
-                        isLoading = false
-                    )
-                }.onFailure { error ->
-                    _uiState.value = _uiState.value.copy(
-                        messages = _uiState.value.messages + ChatMessage("ai", "Error: ${error.message}"),
-                        isLoading = false,
-                        error = error.message
-                    )
+                taskEngine.executeTask(userMessage, provider, repositories).collect { result ->
+                    when (result) {
+                        is com.cyberfusion.core.ai.engine.AIResult.Processing -> {
+                            _uiState.value = _uiState.value.copy(
+                                messages = _uiState.value.messages + ChatMessage("ai", result.message),
+                                isLoading = true,
+                                error = null
+                            )
+                        }
+                        is com.cyberfusion.core.ai.engine.AIResult.Success -> {
+                            _uiState.value = _uiState.value.copy(
+                                messages = _uiState.value.messages + ChatMessage("ai", result.result),
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+                        is com.cyberfusion.core.ai.engine.AIResult.Error -> {
+                            _uiState.value = _uiState.value.copy(
+                                messages = _uiState.value.messages + ChatMessage("ai", "Error: ${result.message}"),
+                                isLoading = false,
+                                error = result.message
+                            )
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -118,12 +131,5 @@ class ChatViewModel(
                 )
             }
         }
-    }
-
-    private fun buildPrompt(messages: List<ChatMessage>, newUserMessage: String): String {
-        val context = messages.takeLast(10).joinToString("\n") { msg ->
-            "${if (msg.role == "user") "User" else "Assistant"}: ${msg.content}"
-        }
-        return "$context\nUser: $newUserMessage\nAssistant:"
     }
 }

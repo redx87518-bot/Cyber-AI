@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
@@ -113,7 +114,7 @@ class OpenRouterAdapter(private val config: AIProviderConfig) : AIProviderAdapte
                                 "properties" to JsonObject(
                                     it.parameters.mapValues { (_, v) -> JsonObject(mapOf("type" to JsonPrimitive("string"), "description" to JsonPrimitive(v))) }
                                 ),
-                                "required" to JsonPrimitive(it.parameters.keys.toList())
+                                "required" to JsonArray(it.parameters.keys.map { JsonPrimitive(it) })
                             )
                         )
                 )

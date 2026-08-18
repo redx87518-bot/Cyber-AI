@@ -20,6 +20,7 @@ import com.cyberfusion.ui.features.grc.GRCScreen
 import com.cyberfusion.ui.features.reports.ReportsScreen
 import com.cyberfusion.ui.features.investigations.InvestigationsScreen
 import com.cyberfusion.ui.features.tools.ToolsScreen
+import com.cyberfusion.ui.features.aimodels.AIModelsScreen
 
 sealed class Screen(val route: String, val title: String) {
     object Dashboard : Screen("dashboard", "Dashboard")
@@ -35,6 +36,7 @@ sealed class Screen(val route: String, val title: String) {
     object Reports : Screen("reports", "Reports")
     object Investigations : Screen("investigations", "Investigations")
     object Tools : Screen("tools", "Tools")
+    object AIModels : Screen("ai_models", "AI Models")
 }
 
 @Composable
@@ -56,5 +58,6 @@ fun CyberFusionNavHost(navController: NavHostController = androidx.navigation.co
         composable(Screen.Reports.route) { ReportsScreen(navController) }
         composable(Screen.Investigations.route) { InvestigationsScreen(navController) }
         composable(Screen.Tools.route) { ToolsScreen(navController) }
+        composable(Screen.AIModels.route) { AIModelsScreen(navController) }
     }
 }

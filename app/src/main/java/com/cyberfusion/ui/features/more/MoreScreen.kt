@@ -17,11 +17,17 @@ import com.cyberfusion.ui.theme.Gold
 @Composable
 fun MoreScreen(navController: NavController) {
     val items = listOf(
+        MoreItem("Dashboard", Icons.Default.Home, "dashboard"),
+        MoreItem("AI Analyst", Icons.Default.Psychology, "ai"),
+        MoreItem("Threat Intel", Icons.Default.Search, "threat_intel"),
+        MoreItem("Labs", Icons.Default.Science, "labs"),
         MoreItem("Alerts", Icons.Default.Notifications, "alerts"),
         MoreItem("Investigations", Icons.Default.Search, "investigations"),
         MoreItem("Incidents", Icons.Default.Warning, "incidents"),
         MoreItem("GRC", Icons.Default.Security, "grc"),
         MoreItem("Reports", Icons.Default.Description, "reports"),
+        MoreItem("Tools", Icons.Default.Build, "tools"),
+        MoreItem("AI Models", Icons.Default.Computer, "ai_models"),
         MoreItem("Settings", Icons.Default.Settings, "settings")
     )
     
@@ -37,14 +43,7 @@ fun MoreScreen(navController: NavController) {
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(items) { item ->
                 Card(modifier = Modifier.fillMaxWidth(), onClick = { 
-                    when (item.route) {
-                        "settings" -> navController.navigate("settings")
-                        "alerts" -> navController.navigate("dashboard")
-                        "investigations" -> navController.navigate("dashboard")
-                        "incidents" -> navController.navigate("dashboard")
-                        "grc" -> navController.navigate("dashboard")
-                        "reports" -> navController.navigate("dashboard")
-                    }
+                    navController.navigate(item.route)
                 }) {
                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         Icon(item.icon, contentDescription = null, tint = Gold, modifier = Modifier.size(24.dp))

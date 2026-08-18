@@ -13,10 +13,11 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cyberfusion.ui.components.CyberFusionBottomBar
+import com.cyberfusion.ui.compose.LocalViewModelFactory
 import com.cyberfusion.ui.theme.Gold
 
 @Composable
-fun LabsScreen(navController: NavController, viewModel: LabsViewModel = viewModel()) {
+fun LabsScreen(navController: NavController, viewModel: LabsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = LocalViewModelFactory.current)) {
     val uiState by viewModel.uiState.collectAsState()
     
     Scaffold(

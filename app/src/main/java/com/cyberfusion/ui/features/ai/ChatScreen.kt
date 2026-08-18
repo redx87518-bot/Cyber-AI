@@ -18,11 +18,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.cyberfusion.ui.components.CyberFusionBottomBar
+import com.cyberfusion.ui.compose.LocalViewModelFactory
 import com.cyberfusion.ui.theme.Gold
 import kotlinx.coroutines.launch
 
 @Composable
-fun ChatScreen(navController: NavController, viewModel: ChatViewModel = viewModel()) {
+fun ChatScreen(navController: NavController, viewModel: ChatViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = LocalViewModelFactory.current)) {
     val uiState by viewModel.uiState.collectAsState()
     var input by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()

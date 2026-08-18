@@ -16,11 +16,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.cyberfusion.ui.compose.LocalViewModelFactory
 import com.cyberfusion.ui.theme.Gold
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = viewModel()) {
+fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = LocalViewModelFactory.current)) {
     val uiState by viewModel.uiState.collectAsState()
     
     Scaffold(

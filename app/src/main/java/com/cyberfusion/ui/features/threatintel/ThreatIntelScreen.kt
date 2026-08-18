@@ -12,10 +12,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.cyberfusion.ui.components.CyberFusionBottomBar
+import com.cyberfusion.ui.compose.LocalViewModelFactory
 import com.cyberfusion.ui.theme.Gold
 
 @Composable
-fun ThreatIntelScreen(navController: NavController, viewModel: ThreatIntelViewModel = viewModel()) {
+fun ThreatIntelScreen(navController: NavController, viewModel: ThreatIntelViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = LocalViewModelFactory.current)) {
     val uiState by viewModel.uiState.collectAsState()
     var query by remember { mutableStateOf("") }
 

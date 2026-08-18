@@ -11,11 +11,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.cyberfusion.ui.compose.LocalViewModelFactory
 import com.cyberfusion.ui.theme.Gold
 import kotlinx.coroutines.launch
 
 @Composable
-fun LabDetailScreen(navController: NavController, labId: Long, labsViewModel: LabsViewModel = viewModel()) {
+fun LabDetailScreen(navController: NavController, labId: Long, labsViewModel: LabsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = LocalViewModelFactory.current)) {
     val labContent = labsViewModel.getLabContent(labId)
     var selectedAnswers by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }
     var showResult by remember { mutableStateOf(false) }

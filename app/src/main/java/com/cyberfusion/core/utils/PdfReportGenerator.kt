@@ -1,7 +1,6 @@
 package com.cyberfusion.core.utils
 
 import android.content.Context
-import android.net.Uri
 import com.cyberfusion.core.agent.AgentReport
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
@@ -26,36 +25,17 @@ object PdfReportGenerator {
         var contentStream = PDPageContentStream(document, page)
         var yPosition = 750f
 
-        fun newPage() {
-            contentStream.endText()
-            contentStream.close()
-            page = PDPage()
-            document.addPage(page)
-            contentStream = PDPageContentStream(document, page)
-            yPosition = 750f
-        }
-
-        fun checkPage(requiredSpace: Float = 50f) {
-            if (yPosition < requiredSpace) newPage()
-        }
-
-        fun writeLine(text: String, fontSize: Float = 10f, bold: Boolean = false, indent: Float = 0f) {
-            checkPage(30f)
-            contentStream.setFont(if (bold) PDType1Font.HELVETICA_BOLD else PDType1Font.HELVETICA, fontSize)
-            contentStream.beginText()
-            contentStream.newLineAtOffset(50f + indent, yPosition)
-            val wrapped = wrapText(text, if (bold) 90 else 95)
-            for (line in wrapped) {
-                checkPage(20f)
-                contentStream.showText(line)
-                yPosition -= fontSize + 4f
-                contentStream.newLineAtOffset(0f, -(fontSize + 4f))
-            }
-            contentStream.endText()
-        }
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
 
         fun writeSection(title: String) {
-            checkPage(40f)
+            if (yPosition < 40f) {
+                contentStream.endText()
+                contentStream.close()
+                page = PDPage()
+                document.addPage(page)
+                contentStream = PDPageContentStream(document, page)
+                yPosition = 750f
+            }
             contentStream.setFont(PDType1Font.HELVETICA_BOLD, 14f)
             contentStream.beginText()
             contentStream.newLineAtOffset(50f, yPosition)
@@ -64,16 +44,71 @@ object PdfReportGenerator {
             yPosition -= 20f
         }
 
+        fun writeLine(text: String, fontSize: Float = 10f, bold: Boolean = false, indent: Float = 0f) {
+            if (yPosition < 30f) {
+                contentStream.endText()
+                contentStream.close()
+                page = PDPage()
+                document.addPage(page)
+                contentStream = PDPageContentStream(document, page)
+                yPosition = 750f
+            }
+            contentStream.setFont(if (bold) PDType1Font.HELVETICA_BOLD else PDType1Font.HELVETICA, fontSize)
+            contentStream.beginText()
+            contentStream.newLineAtOffset(50f + indent, yPosition)
+            val words = text.split(" ")
+            var currentLine = StringBuilder()
+            var lineWidth = 0
+            val maxWidth = if (bold) 90 else 95
+            for (word in words) {
+                if (lineWidth + word.length + 1 > maxWidth && currentLine.isNotEmpty()) {
+                    contentStream.showText(currentLine.toString())
+                    yPosition -= fontSize + 4f
+                    if (yPosition < 20f) {
+                        contentStream.endText()
+                        contentStream.close()
+                        page = PDPage()
+                        document.addPage(page)
+                        contentStream = PDPageContentStream(document, page)
+                        yPosition = 750f
+                        contentStream.setFont(if (bold) PDType1Font.HELVETICA_BOLD else PDType1Font.HELVETICA, fontSize)
+                        contentStream.beginText()
+                        contentStream.newLineAtOffset(50f + indent, yPosition)
+                    }
+                    contentStream.newLineAtOffset(0f, -(fontSize + 4f))
+                    currentLine = StringBuilder(word)
+                    lineWidth = word.length
+                } else {
+                    if (currentLine.isNotEmpty()) {
+                        currentLine.append(" ")
+                        lineWidth++
+                    }
+                    currentLine.append(word)
+                    lineWidth += word.length
+                }
+            }
+            if (currentLine.isNotEmpty()) {
+                contentStream.showText(currentLine.toString())
+                yPosition -= fontSize + 4f
+            }
+            contentStream.endText()
+        }
+
         fun writeSeparator() {
-            checkPage(20f)
+            if (yPosition < 20f) {
+                contentStream.endText()
+                contentStream.close()
+                page = PDPage()
+                document.addPage(page)
+                contentStream = PDPageContentStream(document, page)
+                yPosition = 750f
+            }
             contentStream.setLineWidth(1f)
             contentStream.moveTo(50f, yPosition)
             contentStream.lineTo(550f, yPosition)
             contentStream.stroke()
             yPosition -= 15f
         }
-
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
 
         writeSection("CyberFusion Investigation Report")
         writeLine("Report ID: ${report.reportId}", bold = true)
@@ -163,22 +198,5 @@ object PdfReportGenerator {
         contentStream.close()
         FileOutputStream(outputFile).use { document.save(it) }
         document.close()
-    }
-
-    private fun wrapText(text: String, maxCharsPerLine: Int): List<String> {
-        val words = text.split(" ")
-        val lines = mutableListOf<String>()
-        var currentLine = StringBuilder()
-        for (word in words) {
-            if ((currentLine.length + word.length + 1) > maxCharsPerLine) {
-                lines.add(currentLine.toString())
-                currentLine = StringBuilder(word)
-            } else {
-                if (currentLine.isNotEmpty()) currentLine.append(" ")
-                currentLine.append(word)
-            }
-        }
-        if (currentLine.isNotEmpty()) lines.add(currentLine.toString())
-        return lines
     }
 }

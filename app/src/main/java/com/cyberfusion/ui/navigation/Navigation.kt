@@ -14,6 +14,12 @@ import com.cyberfusion.ui.features.labs.LabsScreen
 import com.cyberfusion.ui.features.more.MoreScreen
 import com.cyberfusion.ui.features.settings.SettingsScreen
 import com.cyberfusion.ui.features.threatintel.ThreatIntelScreen
+import com.cyberfusion.ui.features.alerts.AlertsScreen
+import com.cyberfusion.ui.features.incidents.IncidentsScreen
+import com.cyberfusion.ui.features.grc.GRCScreen
+import com.cyberfusion.ui.features.reports.ReportsScreen
+import com.cyberfusion.ui.features.investigations.InvestigationsScreen
+import com.cyberfusion.ui.features.tools.ToolsScreen
 
 sealed class Screen(val route: String, val title: String) {
     object Dashboard : Screen("dashboard", "Dashboard")
@@ -23,6 +29,12 @@ sealed class Screen(val route: String, val title: String) {
     object More : Screen("more", "More")
     object LabDetail : Screen("lab_detail/{labId}", "Lab Detail")
     object Settings : Screen("settings", "Settings")
+    object Alerts : Screen("alerts", "Alerts")
+    object Incidents : Screen("incidents", "Incidents")
+    object GRC : Screen("grc", "GRC")
+    object Reports : Screen("reports", "Reports")
+    object Investigations : Screen("investigations", "Investigations")
+    object Tools : Screen("tools", "Tools")
 }
 
 @Composable
@@ -38,5 +50,11 @@ fun CyberFusionNavHost(navController: NavHostController = androidx.navigation.co
             val labId = backStackEntry.arguments?.getString("labId")?.toLongOrNull() ?: 0L
             LabDetailScreen(navController, labId)
         }
+        composable(Screen.Alerts.route) { AlertsScreen(navController) }
+        composable(Screen.Incidents.route) { IncidentsScreen(navController) }
+        composable(Screen.GRC.route) { GRCScreen(navController) }
+        composable(Screen.Reports.route) { ReportsScreen(navController) }
+        composable(Screen.Investigations.route) { InvestigationsScreen(navController) }
+        composable(Screen.Tools.route) { ToolsScreen(navController) }
     }
 }

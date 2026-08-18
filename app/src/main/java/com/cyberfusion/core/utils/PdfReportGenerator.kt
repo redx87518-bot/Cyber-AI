@@ -7,7 +7,6 @@ import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.PDPage
 import com.tom_roush.pdfbox.pdmodel.PDPageContentStream
 import com.tom_roush.pdfbox.pdmodel.font.PDType1Font
-import com.tom_roush.pdfbox.pdmodel.font.PDType0Font
 import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
 import java.io.File
 import java.io.FileOutputStream
@@ -116,9 +115,10 @@ object PdfReportGenerator {
                 yPosition -= 15f
             }
 
-            writeSection("CyberFusion Investigation Report")
+            writeSection("CyberFusion Security Investigation Report")
             writeLine("Report ID: ${report.reportId}", bold = true)
             writeLine("Generated: ${dateFormat.format(Date(report.generatedAt))}")
+            writeLine("Analyst: CyberFusion AI Agent")
             writeLine("Severity: ${report.severity ?: "N/A"} | Confidence: ${report.confidence ?: "N/A"}%")
             writeSeparator()
 
@@ -126,7 +126,7 @@ object PdfReportGenerator {
             writeLine(report.summary)
             writeSeparator()
 
-            writeSection("User Request")
+            writeSection("Investigation Objective")
             writeLine(report.metadata["userRequest"] ?: "N/A")
             writeSeparator()
 
@@ -134,20 +134,24 @@ object PdfReportGenerator {
             writeLine(report.metadata["scope"] ?: "Investigation as requested")
             writeSeparator()
 
-            writeSection("Methodology")
-            writeLine(report.methodology ?: "Automated agent investigation with threat intelligence enrichment")
+            writeSection("AI Analysis")
+            writeLine(report.summary)
             writeSeparator()
 
-            writeSection("Agent Plan")
-            report.metadata["plan"]?.let { writeLine(it) } ?: writeLine("No plan recorded")
-            writeSeparator()
-
-            writeSection("Tools Used")
+            writeSection("Tools Executed")
             report.metadata["toolsUsed"]?.let { writeLine(it) } ?: writeLine("No tools recorded")
             writeSeparator()
 
-            writeSection("Timeline")
-            report.metadata["timeline"]?.let { writeLine(it) } ?: writeLine("No timeline recorded")
+            writeSection("Inputs")
+            writeLine(report.metadata["userRequest"] ?: "N/A")
+            writeSeparator()
+
+            writeSection("Findings")
+            report.findings.forEach { finding ->
+                writeLine("${finding.title} (${finding.severity}, Confidence: ${finding.confidence}%)", bold = true)
+                writeLine(finding.description, indent = 10f)
+                writeLine("")
+            }
             writeSeparator()
 
             writeSection("Evidence")
@@ -160,11 +164,22 @@ object PdfReportGenerator {
             }
             writeSeparator()
 
-            writeSection("Findings")
-            report.findings.forEach { finding ->
-                writeLine("${finding.title} (${finding.severity}, Confidence: ${finding.confidence}%)", bold = true)
-                writeLine(finding.description, indent = 10f)
-                writeLine("")
+            writeSection("Timeline")
+            report.metadata["timeline"]?.let { writeLine(it) } ?: writeLine("No timeline recorded")
+            writeSeparator()
+
+            writeSection("AI Reasoning Summary")
+            writeLine("Agent analyzed ${report.metadata["toolsUsed"]?.split(",")?.size ?: 0} tools and generated ${report.findings.size} findings.")
+            writeLine("Confidence level: ${report.confidence ?: "N/A"}%")
+            writeSeparator()
+
+            writeSection("Tool Execution Log")
+            report.metadata["plan"]?.let { writeLine(it) } ?: writeLine("No plan recorded")
+            writeSeparator()
+
+            writeSection("Errors / Warnings")
+            if (report.limitations.isEmpty()) writeLine("No errors or warnings recorded") else {
+                report.limitations.forEach { writeLine("- $it") }
             }
             writeSeparator()
 
@@ -180,18 +195,24 @@ object PdfReportGenerator {
             }
             writeSeparator()
 
-            writeSection("Limitations")
-            if (report.limitations.isEmpty()) writeLine("No limitations recorded") else {
-                report.limitations.forEach { writeLine("- $it") }
-            }
-            writeSeparator()
-
-            writeSection("Recommendations")
+            writeSection("Recommended Actions")
             report.recommendations.forEach { writeLine("- $it") }
             writeSeparator()
 
-            writeSection("Conclusion")
+            writeSection("Remediation")
+            writeLine("Review findings and apply recommended actions. Update security controls based on identified gaps.")
+            writeSeparator()
+
+            writeSection("Final Verdict")
             writeLine(report.summary)
+            writeSeparator()
+
+            writeSection("Confidence Level")
+            writeLine("${report.confidence ?: "N/A"}%")
+            writeSeparator()
+
+            writeSection("Disclaimer")
+            writeLine("This report was generated by CyberFusion AI Agent. Findings are based on automated analysis and should be verified by a human analyst.")
             writeSeparator()
 
             writeSection("Execution Metadata")

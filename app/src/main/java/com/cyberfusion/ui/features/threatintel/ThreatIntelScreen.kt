@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.cyberfusion.ui.components.CyberFusionBottomBar
 import com.cyberfusion.ui.theme.Gold
 
 @Composable

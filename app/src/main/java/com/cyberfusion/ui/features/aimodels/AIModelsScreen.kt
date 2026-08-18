@@ -7,21 +7,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.cyberfusion.ui.theme.CyberBlue
 import com.cyberfusion.ui.theme.CyberRed
+import com.cyberfusion.ui.features.settings.SettingsViewModel
 import com.cyberfusion.ui.compose.LocalViewModelFactory
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun AIModelsScreen(navController: NavController, viewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = LocalViewModelFactory.current)) {
+fun AIModelsScreen(navController: NavController, viewModel: SettingsViewModel = viewModel(factory = LocalViewModelFactory.current)) {
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
     
@@ -83,4 +83,3 @@ fun AIModelsScreen(navController: NavController, viewModel: SettingsViewModel = 
         }
     }
 }
- 

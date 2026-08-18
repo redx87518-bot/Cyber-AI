@@ -98,7 +98,7 @@ object AIToolRegistry {
                 "scanUrl" -> executeScanUrl(parameters, repositories)
                 "getSettings" -> executeGetSettings(repositories)
                 "dnsLookup" -> executeDnsLookup(parameters, repositories)
-                "rdapLookup" -> executeRdapLookup(parameters, repositories),
+                "rdapLookup" -> executeRdapLookup(parameters, repositories)
                 "whoisLookup" -> executeWhoisLookup(parameters, repositories)
                 "mitreLookup" -> executeMitreLookup(parameters, repositories)
                 "iso27001Lookup" -> executeIso27001Lookup(parameters, repositories)

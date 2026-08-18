@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -16,6 +18,7 @@ import androidx.navigation.NavController
 import com.cyberfusion.ui.theme.CyberBlue
 import com.cyberfusion.ui.theme.CyberRed
 import com.cyberfusion.ui.features.settings.SettingsViewModel
+import com.cyberfusion.ui.features.settings.ProviderSettings
 import com.cyberfusion.ui.compose.LocalViewModelFactory
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
@@ -83,4 +86,3 @@ fun AIModelsScreen(navController: NavController, viewModel: SettingsViewModel = 
         }
     }
 }
- 

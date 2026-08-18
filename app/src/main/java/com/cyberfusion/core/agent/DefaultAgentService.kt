@@ -1,4 +1,5 @@
 package com.cyberfusion.core.agent
+import com.cyberfusion.core.agent.ToolExecutionResult
 
 import com.cyberfusion.core.ai.provider.AIProviderConfig
 import com.cyberfusion.core.ai.provider.AIProviderFactory
@@ -315,9 +316,3 @@ class DefaultAgentService(
         _events.emit(event)
     }
     
-    private data class ToolExecutionResult(
-        val success: Boolean,
-        val result: String? = null,
-        val error: String? = null
-    )
-}

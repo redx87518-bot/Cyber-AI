@@ -59,7 +59,7 @@ object AIToolRegistry {
         AITool("getOtxIntel", "Get OTX threat intelligence for indicator", mapOf("type" to "String", "value" to "String")),
         AITool("scanUrl", "Scan URL with URLScan.io", mapOf("query" to "String")),
         AITool("getSettings", "Get current settings and API status", emptyMap()),
-        AITool("mitreLookup", "Lookup MITRE ATT\AITool("getSettings", "Get current settings and API status", emptyMap())CK technique", mapOf("techniqueId" to "String")),
+        AITool("mitreLookup", "Lookup MITRE ATT&CK technique", mapOf("techniqueId" to "String")),
         AITool("iso27001Lookup", "Lookup ISO 27001 control", mapOf("controlId" to "String")),
         AITool("dnsLookup", "Perform DNS lookup for domain", mapOf("domain" to "String", "type" to "String?")),
         AITool("rdapLookup", "Perform RDAP lookup for IP or domain", mapOf("target" to "String"))
@@ -97,8 +97,8 @@ object AIToolRegistry {
                 "scanUrl" -> executeScanUrl(parameters, repositories)
                 "getSettings" -> executeGetSettings(repositories)
                 "dnsLookup" -> executeDnsLookup(parameters, repositories)
-                "rdapLookup" -> executeRdapLookup(parameters, repositories),
-                "mitreLookup" -> executeMitreLookup(parameters, repositories),
+                "rdapLookup" -> executeRdapLookup(parameters, repositories)
+                "mitreLookup" -> executeMitreLookup(parameters, repositories)
                 "iso27001Lookup" -> executeIso27001Lookup(parameters, repositories)
                 else -> AIToolResult(toolName, false, "", "Unknown tool: $toolName")
             }

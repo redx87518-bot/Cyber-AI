@@ -104,6 +104,10 @@ class OpenRouterAdapter(private val config: AIProviderConfig) : AIProviderAdapte
     
     override suspend fun chat(messages: List<Message>, tools: List<AITool>?): Result<String> {
         return try {
+            if (config.apiKey.isBlank()) {
+                return Result.failure(Exception("OpenRouter API key not configured. Please add your API key in Settings."))
+            }
+            
             val toolObjects = tools?.map { 
                 Tool(
                     function = ToolFunction(
@@ -137,7 +141,16 @@ class OpenRouterAdapter(private val config: AIProviderConfig) : AIProviderAdapte
             }.body<OpenRouterResponse>()
             
             if (response.error != null) {
-                Result.failure(Exception("OpenRouter error: ${response.error.message}"))
+                val errorMsg = response.error.message ?: "Unknown error"
+                when {
+                    errorMsg.contains("Invalid API key", true) || errorMsg.contains("401", true) -> 
+                        Result.failure(Exception("OpenRouter authentication failed. Please check your API key in Settings."))
+                    errorMsg.contains("model", true) && errorMsg.contains("not found", true) -> 
+                        Result.failure(Exception("Invalid model: ${config.model}. Please check your model configuration in Settings."))
+                    errorMsg.contains("rate limit", true) || errorMsg.contains("429", true) -> 
+                        Result.failure(Exception("OpenRouter rate limit reached. Please wait a moment and try again."))
+                    else -> Result.failure(Exception("OpenRouter error: $errorMsg"))
+                }
             } else {
                 val choice = response.choices?.firstOrNull()
                 val message = choice?.message
@@ -168,7 +181,18 @@ class OpenRouterAdapter(private val config: AIProviderConfig) : AIProviderAdapte
                 }
             }
         } catch (e: Exception) {
-            Result.failure(Exception("OpenRouter request failed: ${e.message}", e))
+            val errorMsg = e.message ?: "Unknown error"
+            when {
+                errorMsg.contains("401", true) || errorMsg.contains("Unauthorized", true) -> 
+                    Result.failure(Exception("OpenRouter authentication failed. Please check your API key."))
+                errorMsg.contains("404", true) || errorMsg.contains("Not Found", true) -> 
+                    Result.failure(Exception("OpenRouter endpoint not found. Please check your configuration."))
+                errorMsg.contains("timeout", true) || errorMsg.contains("timed out", true) -> 
+                    Result.failure(Exception("OpenRouter request timed out. Please try again."))
+                errorMsg.contains("Unable to resolve host", true) || errorMsg.contains("Network is unreachable", true) -> 
+                    Result.failure(Exception("Network unavailable. Please check your internet connection."))
+                else -> Result.failure(Exception("OpenRouter request failed: $errorMsg"))
+            }
         }
     }
     

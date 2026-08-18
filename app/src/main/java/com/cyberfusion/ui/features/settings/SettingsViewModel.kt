@@ -6,7 +6,11 @@ import com.cyberfusion.core.ai.provider.AIProviderConfig
 import com.cyberfusion.core.database.room.entity.ApiCredentialEntity
 import com.cyberfusion.core.database.room.repository.SettingsRepository
 import com.cyberfusion.core.security.SecureStorage
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 data class ProviderSettings(
     val id: String,

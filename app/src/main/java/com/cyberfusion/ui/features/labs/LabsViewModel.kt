@@ -76,8 +76,8 @@ class LabsViewModel(
                 difficulty = labContent.difficulty,
                 scenario = labContent.scenario,
                 evidence = labContent.evidence,
-                questions = kotlinx.serialization.json.Json.encodeToString(labContent.questions),
-                hints = kotlinx.serialization.json.Json.encodeToString(labContent.hints),
+                questions = kotlinx.serialization.json.Json.encodeToString<List<com.cyberfusion.core.labs.LabQuestion>>(labContent.questions),
+                hints = kotlinx.serialization.json.Json.encodeToString<Map<Int, String>>(labContent.hints),
                 createdAt = System.currentTimeMillis()
             )
             val labId = labsRepository.insertLab(labEntity)
@@ -85,7 +85,7 @@ class LabsViewModel(
                 val questionEntity = com.cyberfusion.core.database.room.entity.LabQuestionEntity(
                     labId = labId,
                     question = question.question,
-                    options = kotlinx.serialization.json.Json.encodeToString(question.options),
+                    options = kotlinx.serialization.json.Json.encodeToString<List<String>>(question.options),
                     correctAnswer = question.correctAnswer.toString(),
                     explanation = question.explanation
                 )

@@ -24,6 +24,8 @@ class AITaskEngine(private val aiRepository: AiRepository) {
             AiTaskEntity(prompt = prompt, provider = provider?.id, status = "processing")
         )
 
+        emit(AIResult.Processing("Selecting security tools..."))
+
         try {
             if (provider == null) {
                 emit(AIResult.Error("No AI provider configured. Add an API key in Settings."))
@@ -35,12 +37,10 @@ class AITaskEngine(private val aiRepository: AiRepository) {
                 ?: return@flow.also { emit(AIResult.Error("Invalid provider configuration")) }
             val adapter = AIProviderFactory().create(config)
 
-            emit(AIResult.Processing("Selecting security tools..."))
-
             val toolCalls = selectTools(prompt)
 
             if (toolCalls.isEmpty()) {
-                emit(AIResult.Processing("No specific tools matched, using AI analysis..."))
+                emit(AIResult.Processing("Running AI analysis..."))
                 val aiResponse = adapter.chat(buildCareerPrompt(prompt))
                 val resultText = aiResponse.getOrElse { "AI analysis failed: ${it.message}" }
                 emit(AIResult.Success(resultText))
@@ -239,4 +239,10 @@ class AITaskEngine(private val aiRepository: AiRepository) {
             else -> "domain"
         }
     }
+}
+
+sealed interface AIResult {
+    data class Processing(val message: String) : AIResult
+    data class Success(val result: String) : AIResult
+    data class Error(val message: String) : AIResult
 }

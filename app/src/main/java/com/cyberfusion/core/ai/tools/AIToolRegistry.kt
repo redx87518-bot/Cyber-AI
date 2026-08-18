@@ -582,3 +582,16 @@ object AIToolRegistry {
         }
     }
 }
+
+data class ToolRepositories(
+    val alertRepository: com.cyberfusion.core.database.room.repository.AlertRepository,
+    val investigationRepository: com.cyberfusion.core.database.room.repository.InvestigationRepository,
+    val iocRepository: com.cyberfusion.core.database.room.repository.IocRepository,
+    val threatIntelRepository: com.cyberfusion.core.database.room.repository.ThreatIntelRepository,
+    val incidentRepository: com.cyberfusion.core.database.room.repository.IncidentRepository,
+    val labsRepository: com.cyberfusion.core.database.room.repository.LabsRepository,
+    val grcRepository: com.cyberfusion.core.database.room.repository.GRCRepository,
+    val reportRepository: com.cyberfusion.core.database.room.repository.ReportRepository,
+    val aiRepository: com.cyberfusion.core.database.room.repository.AiRepository,
+    val settingsRepository: com.cyberfusion.core.database.room.repository.SettingsRepository
+)

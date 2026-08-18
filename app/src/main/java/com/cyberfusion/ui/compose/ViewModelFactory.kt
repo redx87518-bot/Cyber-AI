@@ -4,6 +4,8 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import android.content.Context
+import com.cyberfusion.core.agent.AgentService
+import com.cyberfusion.core.agent.DefaultAgentService
 import com.cyberfusion.core.ai.tools.ToolRepositories
 import com.cyberfusion.core.database.room.CyberFusionDatabase
 import com.cyberfusion.core.database.room.repository.ConversationRepository
@@ -31,10 +33,16 @@ class ViewModelFactory(
             settingsRepository = repositories.settingsRepository
         )
         val conversationRepository = ConversationRepository(database.conversationDao())
+        val agentService = DefaultAgentService(
+            repositories.settingsRepository,
+            toolRepositories,
+            conversationRepository,
+            appContext
+        )
         return when {
             modelClass.isAssignableFrom(com.cyberfusion.ui.features.ai.ChatViewModel::class.java) ->
                 @Suppress("UNCHECKED_CAST")
-                com.cyberfusion.ui.features.ai.ChatViewModel(repositories.settingsRepository, toolRepositories, conversationRepository, appContext) as T
+                com.cyberfusion.ui.features.ai.ChatViewModel(repositories.settingsRepository, agentService, conversationRepository, appContext) as T
             modelClass.isAssignableFrom(com.cyberfusion.ui.features.threatintel.ThreatIntelViewModel::class.java) ->
                 @Suppress("UNCHECKED_CAST")
                 com.cyberfusion.ui.features.threatintel.ThreatIntelViewModel(repositories.settingsRepository) as T

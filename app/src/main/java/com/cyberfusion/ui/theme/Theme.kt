@@ -13,6 +13,7 @@ val CyberBlue = Color(0xFF2979FF)
 val CyberBlueDark = Color(0xFF0062E0)
 val CyberSurfaceRed = Color(0xFF1A0508)
 val CyberSurfaceBlue = Color(0xFF050A1A)
+val Gold = CyberRed
 
 private val DarkColorScheme = darkColorScheme(
     primary = CyberRed,

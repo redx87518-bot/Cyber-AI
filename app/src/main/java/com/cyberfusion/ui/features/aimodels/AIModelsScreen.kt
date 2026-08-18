@@ -20,8 +20,8 @@ import com.cyberfusion.ui.theme.CyberRed
 @Composable
 fun AIModelsScreen(navController: NavController) {
     val providers = listOf(
-        ModelProviderCard("Local", "Falcon-H1-Tiny-90M", "Tool Calling", "~47 MB", true, "Offline", Icons.Default.Computer),
-        ModelProviderCard("OpenRouter", "mistralai/mistral-7b-instruct", "Cloud API", "Online", false, "Cloud", Icons.Default.Cloud)
+        ModelProviderCard("Local", "Falcon-H1-Tiny-90M", "Tool Calling", "~47 MB", true, "Offline", Icons.Default.Computer, true),
+        ModelProviderCard("OpenRouter", "mistralai/mistral-7b-instruct", "Cloud API", "Online", false, "Cloud", Icons.Default.Cloud, false)
     )
     
     Scaffold(
@@ -80,6 +80,6 @@ data class ModelProviderCard(
     val size: String,
     val isLocal: Boolean,
     val status: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val isActive: Boolean
 )
- 

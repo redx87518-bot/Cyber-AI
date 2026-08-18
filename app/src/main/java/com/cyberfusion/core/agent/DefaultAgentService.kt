@@ -45,7 +45,7 @@ class DefaultAgentService(
         )
         taskStore[taskId] = task
         
-        emitEvent(AgentEvent(taskId, AgentEventType.TASK_CREATED, "Orchestrator", status = AgentStepStatus.RUNNING))
+        emitEvent(AgentEvent(taskId = taskId, eventType = AgentEventType.TASK_CREATED, agent = "Orchestrator", tool = null, status = AgentStepStatus.RUNNING))
         
         return try {
             val provider = loadProvider()
@@ -54,7 +54,7 @@ class DefaultAgentService(
             }
             
             val plan = buildPlan(request.prompt)
-            emitEvent(AgentEvent(taskId, AgentEventType.PLAN_GENERATED, "Orchestrator", details = mapOf("steps" to plan.steps.size.toString())))
+            emitEvent(AgentEvent(taskId = taskId, eventType = AgentEventType.PLAN_GENERATED, agent = "Orchestrator", tool = null, status = AgentStepStatus.RUNNING, details = mapOf("steps" to plan.steps.size.toString())))
             
             val toolResults = mutableListOf<String>()
             val timeline = mutableListOf<String>()
@@ -62,7 +62,7 @@ class DefaultAgentService(
             val toolsUsed = mutableListOf<String>()
             
             for (step in plan.steps) {
-                emitEvent(AgentEvent(taskId, AgentEventType.TOOL_EXECUTION, step.agent, step.tool, AgentStepStatus.RUNNING))
+                emitEvent(AgentEvent(taskId = taskId, eventType = AgentEventType.TOOL_EXECUTION, agent = step.agent, tool = step.tool, status = AgentStepStatus.RUNNING))
                 stepStartTime = System.currentTimeMillis()
                 
                 val result = executeStep(step, provider)
@@ -72,10 +72,10 @@ class DefaultAgentService(
                     toolResults.add("${step.tool ?: "analysis"}: ${result.result}")
                     toolsUsed.add(step.tool ?: "analysis")
                     timeline.add("${dateFormat.format(Date(stepStartTime))} - ${step.description} (SUCCESS, ${duration}ms)")
-                    emitEvent(AgentEvent(taskId, AgentEventType.STEP_COMPLETED, step.agent, step.tool, AgentStepStatus.SUCCESS, durationMs = duration, details = mapOf("result" to (result.result.take(200)))))
+                    emitEvent(AgentEvent(taskId = taskId, eventType = AgentEventType.STEP_COMPLETED, agent = step.agent, tool = step.tool, status = AgentStepStatus.SUCCESS, durationMs = duration, details = mapOf("result" to (result.result?.take(200) ?: ""))))
                 } else {
                     timeline.add("${dateFormat.format(Date(stepStartTime))} - ${step.description} (FAILED, ${duration}ms)")
-                    emitEvent(AgentEvent(taskId, AgentEventType.STEP_FAILED, step.agent, step.tool, AgentStepStatus.FAILED, durationMs = duration, details = mapOf("error" to (result.error ?: "Unknown"))))
+                    emitEvent(AgentEvent(taskId = taskId, eventType = AgentEventType.STEP_FAILED, agent = step.agent, tool = step.tool, status = AgentStepStatus.FAILED, durationMs = duration, details = mapOf("error" to (result.error ?: "Unknown"))))
                 }
             }
             
@@ -94,7 +94,7 @@ class DefaultAgentService(
             )
             
             taskStore[taskId] = task.copy(status = AgentStatus.COMPLETED, result = finalResult)
-            emitEvent(AgentEvent(taskId, AgentEventType.TASK_COMPLETED, "Orchestrator", status = AgentStepStatus.SUCCESS))
+            emitEvent(AgentEvent(taskId = taskId, eventType = AgentEventType.TASK_COMPLETED, agent = "Orchestrator", tool = null, status = AgentStepStatus.SUCCESS))
             
             response
         } catch (e: Exception) {
@@ -119,7 +119,7 @@ class DefaultAgentService(
         return try {
             val credentials = settingsRepository.allCredentials.first()
             val providerCreds = credentials.filter { it.provider in listOf("openrouter", "groq", "gemini", "openai") }
-            val cred = providerCreds.firstOrNull() ?: return null
+            val cred = providerCreds.firstOrNull { true } ?: return null
             AIProviderConfig(
                 id = cred.provider,
                 name = cred.provider,
@@ -252,7 +252,7 @@ class DefaultAgentService(
         
         val filePath = generatePdfReport(report)
         val reportWithPath = report.copy(filePath = filePath)
-        emitEvent(AgentEvent(taskId, AgentEventType.REPORT_GENERATED, "Report Agent", status = AgentStepStatus.SUCCESS, details = mapOf("reportId" to reportId)))
+        emitEvent(AgentEvent(taskId = taskId, eventType = AgentEventType.REPORT_GENERATED, agent = "Report Agent", tool = null, status = AgentStepStatus.SUCCESS, details = mapOf("reportId" to reportId)))
         return reportWithPath
     }
     

@@ -4,6 +4,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.cyberfusion.core.ai.tools.ToolRepositories
+import com.cyberfusion.core.database.room.CyberFusionDatabase
 
 val LocalViewModelFactory = compositionLocalOf<ViewModelFactory> {
     error("No ViewModelFactory provided")

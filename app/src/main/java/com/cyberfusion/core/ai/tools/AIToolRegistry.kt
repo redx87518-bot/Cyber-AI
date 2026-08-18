@@ -147,6 +147,8 @@ object AIToolRegistry {
                         val data = result.data.data
                         if (data != null) {
                             results.add("AbuseIPDB: Score=${data.abuseConfidenceScore}, ISP=${data.isp ?: "N/A"}, Country=${data.countryCode ?: "N/A"}, Reports=${data.totalReports}")
+                        } else {
+                            results.add("AbuseIPDB: No data for IP $iocValue")
                         }
                     }
                     is com.cyberfusion.core.network.client.ApiResult.Error -> results.add("AbuseIPDB error: ${result.message}")
@@ -337,7 +339,7 @@ object AIToolRegistry {
         val risks = repositories.grcRepository.allRisks.first()
         if (risks.isEmpty()) return AIToolResult("getRisks", true, "No risks found")
         val summary = risks.joinToString("\n") { risk ->
-            "ID=${risk.id} | ${risk.title} | Severity: ${risk.severity} | Score: ${risk.score} | Status: ${risk.status}"
+            "ID=${risk.id} | ${risk.title} | Severity: ${risk.riskScore} | Score: ${risk.riskScore} | Status: ${risk.status}"
         }
         return AIToolResult("getRisks", true, "Found ${risks.size} risks:\n$summary")
     }
@@ -346,7 +348,7 @@ object AIToolRegistry {
         val title = parameters["title"] ?: return AIToolResult("createRisk", false, "", "Missing title")
         val severity = parameters["severity"] ?: "Medium"
         val description = parameters["description"] ?: ""
-        val id = repositories.grcRepository.insertRisk(RiskEntity(title = title, severity = severity, description = description, score = 0, status = "Open"))
+        val id = repositories.grcRepository.insertRisk(RiskEntity(title = title, description = description, likelihood = "Medium", impact = "Medium", riskScore = 0, status = "Open"))
         return AIToolResult("createRisk", true, "Created risk ID=$id with title: $title")
     }
 
@@ -354,7 +356,7 @@ object AIToolRegistry {
         val controls = repositories.grcRepository.allControls.first()
         if (controls.isEmpty()) return AIToolResult("getControls", true, "No controls found")
         val summary = controls.joinToString("\n") { control ->
-            "ID=${control.id} | ${control.name} | Type: ${control.type} | Status: ${control.status}"
+            "ID=${control.id} | ${control.title} | Type: ${control.type} | Status: ${control.status}"
         }
         return AIToolResult("getControls", true, "Found ${controls.size} controls:\n$summary")
     }
@@ -374,7 +376,7 @@ object AIToolRegistry {
             appendLine()
             if (alerts.isNotEmpty()) {
                 appendLine("Recent Alerts:")
-                alerts.take(5).forEach { appendLine("- ${it.title} (${it.severity})") }
+                alerts.take(5).forEach { appendLine("- ${it.title} (Score: ${it.riskScore})") }
             }
             if (incidents.isNotEmpty()) {
                 appendLine("Active Incidents:")
@@ -382,7 +384,7 @@ object AIToolRegistry {
             }
             if (risks.isNotEmpty()) {
                 appendLine("Top Risks:")
-                risks.take(5).forEach { appendLine("- ${it.title} (${it.severity})") }
+                risks.take(5).forEach { appendLine("- ${it.title} (Score: ${it.riskScore})") }
             }
         }
         return AIToolResult("generateReport", true, report)
@@ -391,7 +393,7 @@ object AIToolRegistry {
     private suspend fun executeSaveReport(parameters: Map<String, String>, repositories: ToolRepositories): AIToolResult {
         val title = parameters["title"] ?: return AIToolResult("saveReport", false, "", "Missing title")
         val content = parameters["content"] ?: return AIToolResult("saveReport", false, "", "Missing content")
-        val id = repositories.reportRepository.insert(ReportEntity(title = title, content = content, format = "text"))
+        val id = repositories.reportRepository.insert(ReportEntity(title = title, type = "General", content = content, format = "text"))
         return AIToolResult("saveReport", true, "Saved report ID=$id with title: $title")
     }
 

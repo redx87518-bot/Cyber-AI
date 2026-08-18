@@ -28,6 +28,7 @@ class AIProviderFactory {
             "groq" -> GroqAdapter(config)
             "gemini" -> GeminiAdapter(config)
             "openai" -> OpenAIAdapter(config)
+            "local" -> LocalAIAdapter(config)
             else -> throw IllegalArgumentException("Unknown provider: ${config.id}")
         }
     }
@@ -380,6 +381,69 @@ class GeminiAdapter(private val config: AIProviderConfig) : AIProviderAdapter {
         return try {
             val response = client.get("$baseUrl/models?key=${config.apiKey}").body<GeminiResponse>()
             response.error == null
+        } catch (e: Exception) {
+            false
+        }
+    }
+}
+
+class LocalAIAdapter(private val config: AIProviderConfig) : AIProviderAdapter {
+    private val client = CyberFusionHttpClient.client
+    
+    override suspend fun chat(messages: List<Message>, tools: List<AITool>?): Result<String> {
+        return try {
+            if (config.model.isBlank()) {
+                return Result.failure(Exception("Local model not configured"))
+            }
+            
+            val request = OpenRouterRequest(
+                model = config.model,
+                messages = messages,
+                tools = tools?.map { 
+                    Tool(
+                        function = ToolFunction(
+                            name = it.name,
+                            description = it.description,
+                            parameters = JsonObject(
+                                mapOf(
+                                    "type" to JsonPrimitive("object"),
+                                    "properties" to JsonObject(
+                                        it.parameters.mapValues { (_, v) -> JsonObject(mapOf("type" to JsonPrimitive("string"), "description" to JsonPrimitive(v))) }
+                                    ),
+                                    "required" to JsonArray(it.parameters.keys.map { JsonPrimitive(it) })
+                                )
+                            )
+                        )
+                    )
+                }
+            )
+            
+            val baseUrl = config.baseUrl ?: "http://localhost:8080"
+            val response = client.post("$baseUrl/chat/completions") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }.body<OpenRouterResponse>()
+            
+            if (response.error != null) {
+                Result.failure(Exception("Local AI error: ${response.error.message}"))
+            } else {
+                val content = response.choices?.firstOrNull()?.message?.content
+                if (content != null) {
+                    Result.success(content)
+                } else {
+                    Result.failure(Exception("Empty response from local AI"))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Local AI request failed: ${e.message}", e))
+        }
+    }
+    
+    override suspend fun validateKey(): Boolean {
+        return try {
+            val baseUrl = config.baseUrl ?: "http://localhost:8080"
+            val response = client.get("$baseUrl/health").body<String>()
+            response.contains("ok") || response.contains("healthy")
         } catch (e: Exception) {
             false
         }

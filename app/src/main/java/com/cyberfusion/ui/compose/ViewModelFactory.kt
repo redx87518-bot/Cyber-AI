@@ -3,8 +3,10 @@ package com.cyberfusion.ui.compose
 import androidx.compose.runtime.compositionLocalOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import android.content.Context
 import com.cyberfusion.core.ai.tools.ToolRepositories
 import com.cyberfusion.core.database.room.CyberFusionDatabase
+import com.cyberfusion.core.database.room.repository.ConversationRepository
 
 val LocalViewModelFactory = compositionLocalOf<ViewModelFactory> {
     error("No ViewModelFactory provided")
@@ -12,7 +14,7 @@ val LocalViewModelFactory = compositionLocalOf<ViewModelFactory> {
 
 class ViewModelFactory(
     private val database: CyberFusionDatabase,
-    private val appContext: android.content.Context
+    private val appContext: Context
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         val repositories = Repositories(database, appContext)
@@ -28,10 +30,11 @@ class ViewModelFactory(
             aiRepository = repositories.aiRepository,
             settingsRepository = repositories.settingsRepository
         )
+        val conversationRepository = ConversationRepository(database.conversationDao())
         return when {
             modelClass.isAssignableFrom(com.cyberfusion.ui.features.ai.ChatViewModel::class.java) ->
                 @Suppress("UNCHECKED_CAST")
-                com.cyberfusion.ui.features.ai.ChatViewModel(repositories.settingsRepository, toolRepositories) as T
+                com.cyberfusion.ui.features.ai.ChatViewModel(repositories.settingsRepository, toolRepositories, conversationRepository, appContext) as T
             modelClass.isAssignableFrom(com.cyberfusion.ui.features.threatintel.ThreatIntelViewModel::class.java) ->
                 @Suppress("UNCHECKED_CAST")
                 com.cyberfusion.ui.features.threatintel.ThreatIntelViewModel(repositories.settingsRepository) as T
@@ -46,7 +49,7 @@ class ViewModelFactory(
     }
 }
 
-class Repositories(private val database: CyberFusionDatabase, private val appContext: android.content.Context) {
+class Repositories(private val database: CyberFusionDatabase, private val appContext: Context) {
     val settingsRepository: com.cyberfusion.core.database.room.repository.SettingsRepository by lazy {
         com.cyberfusion.core.database.room.repository.SettingsRepository(database.settingsDao())
     }

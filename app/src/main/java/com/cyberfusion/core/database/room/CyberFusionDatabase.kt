@@ -33,9 +33,11 @@ import com.cyberfusion.core.database.room.entity.*
         AiTaskHistoryEntity::class,
         AiToolCallEntity::class,
         SettingEntity::class,
-        ApiCredentialEntity::class
+        ApiCredentialEntity::class,
+        ConversationEntity::class,
+        MessageEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -54,6 +56,7 @@ abstract class CyberFusionDatabase : RoomDatabase() {
     abstract fun reportsDao(): ReportsDao
     abstract fun aiDao(): AiDao
     abstract fun settingsDao(): SettingsDao
+    abstract fun conversationDao(): ConversationDao
 
     companion object {
         @Volatile
@@ -65,7 +68,8 @@ abstract class CyberFusionDatabase : RoomDatabase() {
                     context.applicationContext,
                     CyberFusionDatabase::class.java,
                     "cyberfusion.db"
-                ).build()
+                ).fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }

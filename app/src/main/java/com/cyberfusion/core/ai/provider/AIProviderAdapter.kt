@@ -6,9 +6,17 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 interface AIProviderAdapter {
-    suspend fun chat(prompt: String, tools: List<AITool>? = null): Result<String>
+    suspend fun chat(messages: List<Message>, tools: List<AITool>? = null): Result<String>
     suspend fun validateKey(): Boolean
 }
 
@@ -46,12 +54,20 @@ data class OpenRouterError(
 @Serializable
 data class Message(
     val role: String,
-    val content: String
+    val content: String? = null,
+    @SerialName("tool_calls")
+    val toolCalls: List<ToolCall>? = null,
+    @SerialName("tool_call_id")
+    val toolCallId: String? = null,
+    val name: String? = null
 )
 
 @Serializable
 data class Choice(
-    val message: Message? = null
+    val index: Int? = null,
+    val message: Message? = null,
+    @SerialName("finish_reason")
+    val finishReason: String? = null
 )
 
 @Serializable
@@ -64,28 +80,48 @@ data class Tool(
 data class ToolFunction(
     val name: String,
     val description: String,
-    val parameters: Map<String, String>
+    val parameters: JsonObject
+)
+
+@Serializable
+data class ToolCall(
+    val id: String,
+    val type: String = "function",
+    val function: ToolCallFunction
+)
+
+@Serializable
+data class ToolCallFunction(
+    val name: String,
+    val arguments: String
 )
 
 class OpenRouterAdapter(private val config: AIProviderConfig) : AIProviderAdapter {
     private val client = CyberFusionHttpClient.client
     private val baseUrl = config.baseUrl ?: "https://openrouter.ai/api/v1"
     
-    override suspend fun chat(prompt: String, tools: List<AITool>?): Result<String> {
+    override suspend fun chat(messages: List<Message>, tools: List<AITool>?): Result<String> {
         return try {
             val toolObjects = tools?.map { 
                 Tool(
                     function = ToolFunction(
                         name = it.name,
                         description = it.description,
-                        parameters = it.parameters
-                    )
+                        parameters = JsonObject(
+                            mapOf(
+                                "type" to JsonPrimitive("object"),
+                                "properties" to JsonObject(
+                                    it.parameters.mapValues { (_, v) -> JsonObject(mapOf("type" to JsonPrimitive("string"), "description" to JsonPrimitive(v))) }
+                                ),
+                                "required" to JsonPrimitive(it.parameters.keys.toList())
+                            )
+                        )
                 )
             }
             
             val request = OpenRouterRequest(
                 model = config.model,
-                messages = listOf(Message(role = "user", content = prompt)),
+                messages = messages,
                 tools = toolObjects
             )
             
@@ -100,11 +136,32 @@ class OpenRouterAdapter(private val config: AIProviderConfig) : AIProviderAdapte
             if (response.error != null) {
                 Result.failure(Exception("OpenRouter error: ${response.error.message}"))
             } else {
-                val content = response.choices?.firstOrNull()?.message?.content
-                if (content != null) {
-                    Result.success(content)
+                val choice = response.choices?.firstOrNull()
+                val message = choice?.message
+                val finishReason = choice?.finishReason
+                
+                if (message == null) {
+                    return Result.failure(Exception("Empty response from OpenRouter"))
+                }
+                
+                if (message.toolCalls != null && finishReason == "tool_calls") {
+                    val toolResults = message.toolCalls.joinToString("\n") { toolCall ->
+                        val args = try {
+                            Json.parseToJsonElement(toolCall.function.arguments).jsonObject
+                        } catch (e: Exception) {
+                            JsonObject(emptyMap())
+                        }
+                        val argsStr = args.entries.joinToString(", ") { "${it.key}=${it.value.jsonPrimitive.contentOrNull ?: ""}" }
+                        "Tool: ${toolCall.function.name}($argsStr)"
+                    }
+                    Result.success("[TOOL_CALLS:$toolResults]")
                 } else {
-                    Result.failure(Exception("Empty response from OpenRouter"))
+                    val content = message.content
+                    if (content != null) {
+                        Result.success(content)
+                    } else {
+                        Result.failure(Exception("Empty response from OpenRouter"))
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -146,11 +203,11 @@ class GroqAdapter(private val config: AIProviderConfig) : AIProviderAdapter {
     private val client = CyberFusionHttpClient.client
     private val baseUrl = config.baseUrl ?: "https://api.groq.com/openai/v1"
     
-    override suspend fun chat(prompt: String, tools: List<AITool>?): Result<String> {
+    override suspend fun chat(messages: List<Message>, tools: List<AITool>?): Result<String> {
         return try {
             val request = GroqRequest(
                 model = config.model,
-                messages = listOf(Message(role = "user", content = prompt))
+                messages = messages
             )
             
             val response = client.post("$baseUrl/chat/completions") {
@@ -208,11 +265,11 @@ class OpenAIAdapter(private val config: AIProviderConfig) : AIProviderAdapter {
     private val client = CyberFusionHttpClient.client
     private val baseUrl = config.baseUrl ?: "https://api.openai.com/v1"
     
-    override suspend fun chat(prompt: String, tools: List<AITool>?): Result<String> {
+    override suspend fun chat(messages: List<Message>, tools: List<AITool>?): Result<String> {
         return try {
             val request = OpenAIRequest(
                 model = config.model,
-                messages = listOf(Message(role = "user", content = prompt))
+                messages = messages
             )
             
             val response = client.post("$baseUrl/chat/completions") {
@@ -290,10 +347,10 @@ class GeminiAdapter(private val config: AIProviderConfig) : AIProviderAdapter {
     private val client = CyberFusionHttpClient.client
     private val baseUrl = config.baseUrl ?: "https://generativelanguage.googleapis.com/v1beta"
     
-    override suspend fun chat(prompt: String, tools: List<AITool>?): Result<String> {
+    override suspend fun chat(messages: List<Message>, tools: List<AITool>?): Result<String> {
         return try {
             val request = GeminiRequest(
-                contents = listOf(GeminiContent(parts = listOf(GeminiPart(text = prompt)))),
+                contents = listOf(GeminiContent(parts = listOf(GeminiPart(text = messages.lastOrNull()?.content ?: "")))),
                 generationConfig = GeminiConfig()
             )
             

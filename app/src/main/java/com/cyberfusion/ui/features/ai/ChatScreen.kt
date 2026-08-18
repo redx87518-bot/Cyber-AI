@@ -1,5 +1,6 @@
 package com.cyberfusion.ui.features.ai
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,11 +8,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -27,12 +31,30 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel = androidx
     val uiState by viewModel.uiState.collectAsState()
     var input by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("CyberFusion AI", fontWeight = FontWeight.Bold, color = Gold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+                actions = {
+                    IconButton(onClick = {
+                        scope.launch {
+                            viewModel.sendMessage("Generate a PDF report of this conversation")
+                            Toast.makeText(context, "Generating PDF report...", Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = "Export PDF", tint = Gold)
+                    }
+                    IconButton(onClick = {
+                        scope.launch {
+                            viewModel.sendMessage("Start a new conversation")
+                        }
+                    }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "New Chat", tint = Gold)
+                    }
+                }
             )
         },
         bottomBar = { CyberFusionBottomBar(navController) }
@@ -40,7 +62,8 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel = androidx
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             LazyColumn(
                 modifier = Modifier.weight(1f).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                reverseLayout = false
             ) {
                 items(uiState.messages) { msg ->
                     val isUser = msg.role == "user"
@@ -68,7 +91,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel = androidx
                                 shape = RoundedCornerShape(16.dp)
                             ) {
                                 Text(
-                                    text = "Thinking...",
+                                    text = "Analyzing and executing tools...",
                                     modifier = Modifier.padding(12.dp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -79,11 +102,19 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel = androidx
             }
 
             uiState.error?.let { error ->
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
+                if (error.contains("image", ignoreCase = true) || error.contains("png", ignoreCase = true) || error.contains("jpg", ignoreCase = true)) {
+                    Text(
+                        text = "Image analysis is not supported yet. Please describe the image content in text so I can assist you.",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                } else {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
             }
 
             Row(
@@ -94,7 +125,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel = androidx
                     value = input,
                     onValueChange = { input = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Ask CyberFusion AI...") },
+                    placeholder = { Text("Give me instructions, ask for analysis, request a report...") },
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Gold)
                 )
                 Spacer(modifier = Modifier.width(8.dp))

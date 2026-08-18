@@ -62,7 +62,8 @@ object AIToolRegistry {
         AITool("mitreLookup", "Lookup MITRE ATT&CK technique", mapOf("techniqueId" to "String")),
         AITool("iso27001Lookup", "Lookup ISO 27001 control", mapOf("controlId" to "String")),
         AITool("dnsLookup", "Perform DNS lookup for domain", mapOf("domain" to "String", "type" to "String?")),
-        AITool("rdapLookup", "Perform RDAP lookup for IP or domain", mapOf("target" to "String"))
+        AITool("rdapLookup", "Perform RDAP lookup for IP or domain", mapOf("target" to "String")),
+        AITool("whoisLookup", "Perform WHOIS lookup for domain", mapOf("domain" to "String"))
     )
 
     suspend fun executeTool(
@@ -97,7 +98,8 @@ object AIToolRegistry {
                 "scanUrl" -> executeScanUrl(parameters, repositories)
                 "getSettings" -> executeGetSettings(repositories)
                 "dnsLookup" -> executeDnsLookup(parameters, repositories)
-                "rdapLookup" -> executeRdapLookup(parameters, repositories)
+                "rdapLookup" -> executeRdapLookup(parameters, repositories),
+                "whoisLookup" -> executeWhoisLookup(parameters, repositories)
                 "mitreLookup" -> executeMitreLookup(parameters, repositories)
                 "iso27001Lookup" -> executeIso27001Lookup(parameters, repositories)
                 else -> AIToolResult(toolName, false, "", "Unknown tool: $toolName")
@@ -598,6 +600,18 @@ object AIToolRegistry {
             AIToolResult("dnsLookup", true, "DNS $type records for $domain:\n${answers.joinToString("\n")}")
         } catch (e: Exception) {
             AIToolResult("dnsLookup", false, "", "DNS lookup failed: ${e.message}")
+        }
+    }
+
+    private suspend fun executeWhoisLookup(parameters: Map<String, String>, repositories: ToolRepositories): AIToolResult {
+        val domain = parameters["domain"] ?: return AIToolResult("whoisLookup", false, "", "Missing domain parameter")
+        return try {
+            val client = com.cyberfusion.core.network.client.CyberFusionHttpClient.client
+            val response = client.get("https://whois-api.example.com/whois/$domain").body<String>()
+            val summary = response.take(1000)
+            AIToolResult("whoisLookup", true, "WHOIS for $domain:\n$summary")
+        } catch (e: Exception) {
+            AIToolResult("whoisLookup", false, "", "WHOIS lookup failed: ${e.message}")
         }
     }
 

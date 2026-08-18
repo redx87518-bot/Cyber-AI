@@ -9,6 +9,7 @@ import com.cyberfusion.core.database.room.entity.MessageEntity
 import com.cyberfusion.core.database.room.repository.ConversationRepository
 import com.cyberfusion.core.database.room.repository.SettingsRepository
 import com.cyberfusion.core.utils.PdfReportGenerator
+import com.cyberfusion.core.utils.PdfUtils
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -53,24 +54,32 @@ class DefaultAgentService(
             emitEvent(AgentEvent(taskId, AgentEventType.PLAN_GENERATED, "Orchestrator", details = mapOf("steps" to plan.steps.size.toString())))
             
             val toolResults = mutableListOf<String>()
-            var finalResult = ""
+            val timeline = mutableListOf<String>()
+            var stepStartTime = System.currentTimeMillis()
+            val toolsUsed = mutableListOf<String>()
             
             for (step in plan.steps) {
                 emitEvent(AgentEvent(taskId, AgentEventType.TOOL_EXECUTION, step.agent, step.tool, AgentStepStatus.RUNNING))
+                stepStartTime = System.currentTimeMillis()
                 
                 val result = executeStep(step, provider)
+                val duration = System.currentTimeMillis() - stepStartTime
+                
                 if (result.success) {
-                    toolResults.add("${step.tool}: ${result.result}")
-                    emitEvent(AgentEvent(taskId, AgentEventType.STEP_COMPLETED, step.agent, step.tool, AgentStepStatus.SUCCESS, details = mapOf("result" to (result.result.take(200)))))
+                    toolResults.add("${step.tool ?: "analysis"}: ${result.result}")
+                    toolsUsed.add(step.tool ?: "analysis")
+                    timeline.add("${dateFormat.format(Date(stepStartTime))} - ${step.description} (SUCCESS, ${duration}ms)")
+                    emitEvent(AgentEvent(taskId, AgentEventType.STEP_COMPLETED, step.agent, step.tool, AgentStepStatus.SUCCESS, durationMs = duration, details = mapOf("result" to (result.result.take(200)))))
                 } else {
-                    emitEvent(AgentEvent(taskId, AgentEventType.STEP_FAILED, step.agent, step.tool, AgentStepStatus.FAILED, details = mapOf("error" to (result.error ?: "Unknown"))))
+                    timeline.add("${dateFormat.format(Date(stepStartTime))} - ${step.description} (FAILED, ${duration}ms)")
+                    emitEvent(AgentEvent(taskId, AgentEventType.STEP_FAILED, step.agent, step.tool, AgentStepStatus.FAILED, durationMs = duration, details = mapOf("error" to (result.error ?: "Unknown"))))
                 }
             }
             
             finalResult = synthesizeResult(request.prompt, toolResults, provider)
             
             val report = if (request.requireReport || request.requirePdf) {
-                generateReport(taskId, request.prompt, finalResult, toolResults)
+                generateReport(taskId, request.prompt, finalResult, toolResults, plan, timeline, toolsUsed)
             } else null
             
             val response = AgentResponse(
@@ -90,6 +99,8 @@ class DefaultAgentService(
             AgentResponse(taskId, AgentStatus.FAILED, error = e.message)
         }
     }
+    
+    private lateinit var finalResult: String
     
     override suspend fun cancel(taskId: String): Boolean {
         val task = taskStore[taskId] ?: return false
@@ -128,7 +139,7 @@ class DefaultAgentService(
         }
     }
     
-    private fun buildPlan(prompt: String): AgentPlan {
+    internal fun buildPlan(prompt: String): AgentPlan {
         val lower = prompt.lowercase()
         val steps = mutableListOf<AgentPlanStep>()
         
@@ -196,7 +207,7 @@ class DefaultAgentService(
         return result.getOrElse { "Tool execution completed, but AI summarization failed: ${it.message}" }
     }
     
-    private suspend fun generateReport(taskId: String, prompt: String, result: String, toolResults: List<String>): AgentReport {
+    private suspend fun generateReport(taskId: String, prompt: String, result: String, toolResults: List<String>, plan: AgentPlan, timeline: List<String>, toolsUsed: List<String>): AgentReport {
         val reportId = "RPT-$taskId-${System.currentTimeMillis()}"
         val findings = toolResults.mapIndexed { index, result ->
             AgentFinding(
@@ -226,38 +237,30 @@ class DefaultAgentService(
             recommendations = listOf("Review findings", "Apply recommended actions"),
             severity = "MEDIUM",
             confidence = 75,
-            methodology = "Automated agent investigation"
+            methodology = "Automated agent investigation",
+            metadata = mapOf(
+                "userRequest" to prompt,
+                "scope" to "Investigation as requested",
+                "plan" to plan.steps.joinToString("\n") { "${it.stepId}. ${it.description} (${it.agent})" },
+                "toolsUsed" to toolsUsed.joinToString(", "),
+                "timeline" to timeline.joinToString("\n")
+            )
         )
         
-        generatePdfReport(report)
-        return report
+        val filePath = generatePdfReport(report)
+        val reportWithPath = report.copy(filePath = filePath)
+        emitEvent(AgentEvent(taskId, AgentEventType.REPORT_GENERATED, "Report Agent", status = AgentStepStatus.SUCCESS, details = mapOf("reportId" to reportId)))
+        return reportWithPath
     }
     
-    private suspend fun generatePdfReport(report: AgentReport) {
-        try {
-            val content = buildString {
-                appendLine("=== CyberFusion AI Report ===")
-                appendLine("Report ID: ${report.reportId}")
-                appendLine("Generated: ${dateFormat.format(Date())}")
-                appendLine()
-                appendLine("--- Summary ---")
-                appendLine(report.summary)
-                appendLine()
-                appendLine("--- Findings ---")
-                report.findings.forEach { appendLine("- ${it.title}: ${it.description}") }
-                appendLine()
-                appendLine("--- Recommendations ---")
-                report.recommendations.forEach { appendLine("- $it") }
-                appendLine()
-                appendLine("--- Evidence ---")
-                report.evidence.forEach { appendLine("- [${it.type}] ${it.source}: ${it.content.take(200)}") }
-            }
-            
+    private suspend fun generatePdfReport(report: AgentReport): String {
+        return try {
             val fileName = "cyberfusion_report_${report.reportId}.pdf"
             val file = File(appContext.getExternalFilesDir(null), fileName)
-            PdfReportGenerator.generateReport(appContext, content, file)
+            PdfReportGenerator.generateReport(appContext, report, file)
+            file.absolutePath
         } catch (e: Exception) {
-            // PDF generation failed, not critical
+            ""
         }
     }
     

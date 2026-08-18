@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.cyberfusion.core.agent.AgentRequest
 import com.cyberfusion.core.agent.AgentResponse
 import com.cyberfusion.core.agent.AgentService
+import com.cyberfusion.core.agent.AgentReport
 import com.cyberfusion.core.database.room.entity.ConversationEntity
 import com.cyberfusion.core.database.room.entity.MessageEntity
 import com.cyberfusion.core.database.room.repository.ConversationRepository
 import com.cyberfusion.core.database.room.repository.SettingsRepository
+import com.cyberfusion.core.utils.PdfUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,7 +27,8 @@ data class ChatUiState(
     val messages: List<ChatMessage> = listOf(ChatMessage("ai", "Hello, Analyst. I am CyberFusion AI, your autonomous cybersecurity agent. Tell me what you want investigated, and I will plan, execute, and report back with actionable results.")),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val currentConversationId: Long? = null
+    val currentConversationId: Long? = null,
+    val lastReport: AgentReport? = null
 )
 
 class ChatViewModel(
@@ -94,7 +97,8 @@ class ChatViewModel(
                 _uiState.value = _uiState.value.copy(
                     messages = _uiState.value.messages + ChatMessage("ai", aiMessage),
                     isLoading = false,
-                    error = null
+                    error = null,
+                    lastReport = response.report
                 )
                 conversationRepository.insertMessage(MessageEntity(conversationId = conversationId, role = "ai", content = aiMessage))
                 

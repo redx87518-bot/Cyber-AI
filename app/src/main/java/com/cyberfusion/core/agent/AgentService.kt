@@ -94,7 +94,7 @@ enum class AgentEventType {
     REPORT_GENERATED,
     TASK_COMPLETED,
     TASK_FAILED
-}
+)
 
 data class AgentReport(
     val reportId: String,
@@ -110,7 +110,8 @@ data class AgentReport(
     val mitreAttack: List<String> = emptyList(),
     val iso27001Controls: List<String> = emptyList(),
     val metadata: Map<String, String> = emptyMap(),
-    val generatedAt: Long = System.currentTimeMillis()
+    val generatedAt: Long = System.currentTimeMillis(),
+    val filePath: String? = null
 )
 
 data class AgentFinding(

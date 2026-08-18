@@ -10,8 +10,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,6 +29,7 @@ import androidx.navigation.NavController
 import com.cyberfusion.ui.components.CyberFusionBottomBar
 import com.cyberfusion.ui.compose.LocalViewModelFactory
 import com.cyberfusion.ui.theme.Gold
+import com.cyberfusion.core.utils.PdfUtils
 import kotlinx.coroutines.launch
 
 @Composable
@@ -95,6 +101,46 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel = androidx
                                     modifier = Modifier.padding(12.dp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                            }
+                        }
+                    }
+                }
+                
+                uiState.lastReport?.let { report ->
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("PDF Report Ready", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(onClick = {
+                                        val file = java.io.File(report.filePath ?: "")
+                                        if (file.exists()) {
+                                            PdfUtils.openPdf(context, file)
+                                        } else {
+                                            Toast.makeText(context, "PDF file not found", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }, colors = ButtonDefaults.buttonColors(containerColor = Gold)) {
+                                        Icon(Icons.Default.OpenInNew, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Open")
+                                    }
+                                    OutlinedButton(onClick = {
+                                        val file = java.io.File(report.filePath ?: "")
+                                        if (file.exists()) {
+                                            PdfUtils.sharePdf(context, file)
+                                        } else {
+                                            Toast.makeText(context, "PDF file not found", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }) {
+                                        Icon(Icons.Default.Share, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Share")
+                                    }
+                                }
                             }
                         }
                     }

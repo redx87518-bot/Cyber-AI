@@ -52,6 +52,21 @@ class ViewModelFactory(
             modelClass.isAssignableFrom(com.cyberfusion.ui.features.settings.SettingsViewModel::class.java) ->
                 @Suppress("UNCHECKED_CAST")
                 com.cyberfusion.ui.features.settings.SettingsViewModel(repositories.settingsRepository, repositories.secureStorage) as T
+            modelClass.isAssignableFrom(com.cyberfusion.ui.features.dashboard.DashboardViewModel::class.java) ->
+                @Suppress("UNCHECKED_CAST")
+                com.cyberfusion.ui.features.dashboard.DashboardViewModel(repositories.alertRepository, repositories.incidentRepository, repositories.grcRepository, repositories.labsRepository) as T
+            modelClass.isAssignableFrom(com.cyberfusion.ui.features.alerts.AlertsViewModel::class.java) ->
+                @Suppress("UNCHECKED_CAST")
+                com.cyberfusion.ui.features.alerts.AlertsViewModel(repositories.alertRepository) as T
+            modelClass.isAssignableFrom(com.cyberfusion.ui.features.incidents.IncidentsViewModel::class.java) ->
+                @Suppress("UNCHECKED_CAST")
+                com.cyberfusion.ui.features.incidents.IncidentsViewModel(repositories.incidentRepository) as T
+            modelClass.isAssignableFrom(com.cyberfusion.ui.features.grc.GRCViewModel::class.java) ->
+                @Suppress("UNCHECKED_CAST")
+                com.cyberfusion.ui.features.grc.GRCViewModel(repositories.grcRepository) as T
+            modelClass.isAssignableFrom(com.cyberfusion.ui.features.reports.ReportsViewModel::class.java) ->
+                @Suppress("UNCHECKED_CAST")
+                com.cyberfusion.ui.features.reports.ReportsViewModel(repositories.reportRepository) as T
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     }

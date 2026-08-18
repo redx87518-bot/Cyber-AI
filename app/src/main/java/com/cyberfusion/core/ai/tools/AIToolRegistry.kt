@@ -1,7 +1,7 @@
 package com.cyberfusion.core.ai.tools
 
-import com.cyberfusion.ai.provider.AITool
-import com.cyberfusion.ai.provider.AIToolResult
+import com.cyberfusion.core.ai.provider.AITool
+import com.cyberfusion.core.ai.provider.AIToolResult
 import com.cyberfusion.core.database.room.repository.AlertRepository
 import com.cyberfusion.core.database.room.repository.IncidentRepository
 import com.cyberfusion.core.database.room.repository.InvestigationRepository

@@ -1,8 +1,11 @@
 package com.cyberfusion.core.ai.engine
 
-import com.cyberfusion.ai.provider.*
-import com.cyberfusion.ai.tools.AIToolRegistry
-import com.cyberfusion.ai.tools.ToolRepositories
+import com.cyberfusion.core.ai.provider.AIProvider
+import com.cyberfusion.core.ai.provider.AIProviderConfig
+import com.cyberfusion.core.ai.provider.AIProviderFactory
+import com.cyberfusion.core.ai.provider.AIResult
+import com.cyberfusion.core.ai.tools.AIToolRegistry
+import com.cyberfusion.core.ai.tools.ToolRepositories
 import com.cyberfusion.core.database.room.entity.AiTaskEntity
 import com.cyberfusion.core.database.room.entity.AiTaskHistoryEntity
 import com.cyberfusion.core.database.room.entity.AiToolCallEntity
@@ -31,7 +34,9 @@ class AITaskEngine(private val aiRepository: AiRepository) {
                 return@flow
             }
 
-            val adapter = AIProviderFactory().create(provider as AIProviderConfig)
+            val config = provider as? AIProviderConfig
+                ?: return@flow.also { emit(AIResult.Error("Invalid provider configuration")) }
+            val adapter = AIProviderFactory().create(config)
             
             emit(AIResult.Processing("Executing tools..."))
             
@@ -59,10 +64,4 @@ class AITaskEngine(private val aiRepository: AiRepository) {
             false
         }
     }
-}
-
-sealed interface AIResult {
-    data class Processing(val message: String) : AIResult
-    data class Success(val result: String) : AIResult
-    data class Error(val message: String) : AIResult
 }

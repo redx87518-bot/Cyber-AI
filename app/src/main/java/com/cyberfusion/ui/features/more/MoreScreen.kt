@@ -20,7 +20,7 @@ fun MoreScreen(navController: NavController) {
         MoreItem("Alerts", Icons.Default.Notifications),
         MoreItem("Investigations", Icons.Default.Search),
         MoreItem("Incidents", Icons.Default.Warning),
-        MoreItem("GRC", Icons.Default.Assessment),
+        MoreItem("GRC", Icons.Default.Security),
         MoreItem("Reports", Icons.Default.Description),
         MoreItem("Settings", Icons.Default.Settings)
     )

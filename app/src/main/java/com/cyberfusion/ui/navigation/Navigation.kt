@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.cyberfusion.ui.features.ai.ChatScreen
 import com.cyberfusion.ui.features.dashboard.DashboardScreen
+import com.cyberfusion.ui.features.labs.LabDetailScreen
 import com.cyberfusion.ui.features.labs.LabsScreen
 import com.cyberfusion.ui.features.more.MoreScreen
 import com.cyberfusion.ui.features.threatintel.ThreatIntelScreen
@@ -16,6 +17,7 @@ sealed class Screen(val route: String, val title: String) {
     object ThreatIntel : Screen("threat_intel", "Threat Intel")
     object Labs : Screen("labs", "Labs")
     object More : Screen("more", "More")
+    object LabDetail : Screen("lab_detail/{labId}", "Lab Detail")
 }
 
 @Composable
@@ -26,5 +28,9 @@ fun CyberFusionNavHost(navController: NavHostController = androidx.navigation.co
         composable(Screen.ThreatIntel.route) { ThreatIntelScreen(navController) }
         composable(Screen.Labs.route) { LabsScreen(navController) }
         composable(Screen.More.route) { MoreScreen(navController) }
+        composable(Screen.LabDetail.route) { backStackEntry ->
+            val labId = backStackEntry.arguments?.getString("labId")?.toLongOrNull() ?: 0L
+            LabDetailScreen(navController, labId)
+        }
     }
 }

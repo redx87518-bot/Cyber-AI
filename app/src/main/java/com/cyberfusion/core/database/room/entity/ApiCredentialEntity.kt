@@ -16,3 +16,4 @@ data class ApiCredentialEntity(
     val status: String = "unknown",
     val updatedAt: Long = System.currentTimeMillis()
 )
+ 

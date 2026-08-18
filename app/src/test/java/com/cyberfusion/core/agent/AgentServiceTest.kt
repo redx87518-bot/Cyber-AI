@@ -1,4 +1,5 @@
 package com.cyberfusion.core.agent
+import com.cyberfusion.core.report.AgentReport
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

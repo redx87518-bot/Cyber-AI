@@ -10,6 +10,9 @@ import com.cyberfusion.core.database.room.repository.ConversationRepository
 import com.cyberfusion.core.database.room.repository.SettingsRepository
 import com.cyberfusion.core.utils.PdfReportGenerator
 import com.cyberfusion.core.utils.PdfUtils
+import com.cyberfusion.core.report.AgentReport
+import com.cyberfusion.core.report.AgentFinding
+import com.cyberfusion.core.report.AgentEvidence
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow

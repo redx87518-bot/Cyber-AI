@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.cyberfusion.core.agent.AgentRequest
 import com.cyberfusion.core.agent.AgentResponse
 import com.cyberfusion.core.agent.AgentService
-import com.cyberfusion.core.agent.AgentReport
+import com.cyberfusion.core.report.AgentReport
 import com.cyberfusion.core.database.room.entity.ConversationEntity
 import com.cyberfusion.core.database.room.entity.MessageEntity
 import com.cyberfusion.core.database.room.repository.ConversationRepository

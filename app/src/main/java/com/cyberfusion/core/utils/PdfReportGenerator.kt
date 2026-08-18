@@ -1,7 +1,7 @@
 package com.cyberfusion.core.utils
 
 import android.content.Context
-import com.cyberfusion.core.agent.AgentReport
+import com.cyberfusion.core.report.AgentReport
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.PDPage

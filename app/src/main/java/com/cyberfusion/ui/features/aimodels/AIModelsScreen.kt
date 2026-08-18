@@ -82,3 +82,4 @@ data class ModelProviderCard(
     val status: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector
 )
+ 

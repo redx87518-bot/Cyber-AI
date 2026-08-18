@@ -1,4 +1,6 @@
 package com.cyberfusion.core.ai.tools
+import io.ktor.client.request.*
+import io.ktor.client.call.*
 import java.net.URLEncoder
 
 import com.cyberfusion.core.ai.provider.AITool

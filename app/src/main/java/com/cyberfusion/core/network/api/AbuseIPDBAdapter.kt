@@ -1,5 +1,6 @@
 package com.cyberfusion.core.network.api
 
+import com.cyberfusion.core.network.client.ApiResult
 import com.cyberfusion.core.network.client.CyberFusionHttpClient
 import io.ktor.client.call.*
 import io.ktor.client.request.*

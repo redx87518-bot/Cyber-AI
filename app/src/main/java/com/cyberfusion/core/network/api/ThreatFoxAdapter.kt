@@ -1,9 +1,14 @@
 package com.cyberfusion.core.network.api
 
+import com.cyberfusion.core.network.client.ApiResult
 import com.cyberfusion.core.network.client.CyberFusionHttpClient
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.put
 
 class ThreatFoxAdapter {
     private val client = CyberFusionHttpClient.client
@@ -20,6 +25,14 @@ class ThreatFoxAdapter {
         } catch (e: Exception) {
             ApiResult.Error("ThreatFox request failed: ${e.message}", e)
         }
+    }
+
+    private fun buildJsonPayload(ioc: String, iocType: String?): JsonObject {
+        return JsonObject(mapOf(
+            "query" to JsonPrimitive("search_ioc"),
+            "ioc" to JsonPrimitive(ioc),
+            "ioc_type" to JsonPrimitive(iocType ?: "")
+        ))
     }
 }
 

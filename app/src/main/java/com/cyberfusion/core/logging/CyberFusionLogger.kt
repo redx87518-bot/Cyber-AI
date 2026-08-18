@@ -7,6 +7,10 @@ object CyberFusionLogger {
         android.util.Log.d(TAG, sanitize(message))
     }
     
+    fun d(tag: String, message: String) {
+        android.util.Log.d(tag, sanitize(message))
+    }
+    
     fun e(message: String, throwable: Throwable? = null) {
         android.util.Log.e(TAG, sanitize(message), throwable)
     }

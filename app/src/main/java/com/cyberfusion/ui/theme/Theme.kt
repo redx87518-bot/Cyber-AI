@@ -7,9 +7,9 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val Gold = Color(0xFFD4AF37)
-private val DarkGold = Color(0xFFB8960C)
-private val LightGold = Color(0xFFF5E6B8)
+val Gold = Color(0xFFD4AF37)
+val DarkGold = Color(0xFFB8960C)
+val LightGold = Color(0xFFF5E6B8)
 private val SurfaceWhite = Color(0xFFFAFAFA)
 private val BackgroundWhite = Color(0xFFFFFFFF)
 private val TextPrimary = Color(0xFF1A1A1A)

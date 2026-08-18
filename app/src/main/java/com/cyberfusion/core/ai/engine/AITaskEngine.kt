@@ -3,7 +3,6 @@ package com.cyberfusion.core.ai.engine
 import com.cyberfusion.core.ai.provider.AIProvider
 import com.cyberfusion.core.ai.provider.AIProviderConfig
 import com.cyberfusion.core.ai.provider.AIProviderFactory
-import com.cyberfusion.core.ai.provider.AIResult
 import com.cyberfusion.core.ai.tools.AIToolRegistry
 import com.cyberfusion.core.ai.tools.ToolRepositories
 import com.cyberfusion.core.database.room.entity.AiTaskEntity
@@ -64,4 +63,10 @@ class AITaskEngine(private val aiRepository: AiRepository) {
             false
         }
     }
+}
+
+sealed interface AIResult {
+    data class Processing(val message: String) : AIResult
+    data class Success(val result: String) : AIResult
+    data class Error(val message: String) : AIResult
 }

@@ -305,8 +305,8 @@ class DefaultAgentService(
         return try {
             val fileName = "cyberfusion_report_${report.reportId}.pdf"
             val file = File(appContext.getExternalFilesDir(null), fileName)
-            PdfReportGenerator.generateReport(appContext, report, file)
-            file.absolutePath
+            val pdfSuccess = PdfReportGenerator.generateReport(appContext, report, file)
+            if (pdfSuccess) file.absolutePath else ""
         } catch (e: Exception) {
             ""
         }

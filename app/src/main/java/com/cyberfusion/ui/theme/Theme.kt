@@ -7,39 +7,39 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-val Gold = Color(0xFFD4AF37)
-val DarkGold = Color(0xFFB8960C)
-val LightGold = Color(0xFFF5E6B8)
-private val SurfaceWhite = Color(0xFFFAFAFA)
-private val BackgroundWhite = Color(0xFFFFFFFF)
-private val TextPrimary = Color(0xFF1A1A1A)
-private val TextSecondary = Color(0xFF666666)
-private val BorderColor = Color(0xFFE0E0E0)
+val CyberRed = Color(0xFFFF1744)
+val CyberRedDark = Color(0xFFD50000)
+val CyberBlue = Color(0xFF2979FF)
+val CyberBlueDark = Color(0xFF0062E0)
+val CyberSurfaceRed = Color(0xFF1A0508)
+val CyberSurfaceBlue = Color(0xFF050A1A)
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Gold,
-    onPrimary = Color.Black,
-    secondary = DarkGold,
-    onSecondary = Color.Black,
-    tertiary = LightGold,
-    background = Color(0xFF121212),
-    surface = Color(0xFF1E1E1E),
+    primary = CyberRed,
+    onPrimary = Color.White,
+    secondary = CyberBlue,
+    onSecondary = Color.White,
+    tertiary = Color(0xFF64FFDA),
+    background = Color(0xFF0A0A0A),
+    surface = Color(0xFF121212),
     onBackground = Color.White,
     onSurface = Color.White,
-    outline = BorderColor
+    outline = Color(0xFF333333),
+    error = CyberRed
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Gold,
+    primary = CyberRed,
     onPrimary = Color.White,
-    secondary = DarkGold,
+    secondary = CyberBlue,
     onSecondary = Color.White,
-    tertiary = LightGold,
-    background = BackgroundWhite,
-    surface = SurfaceWhite,
-    onBackground = TextPrimary,
-    onSurface = TextPrimary,
-    outline = BorderColor
+    tertiary = Color(0xFF00BFA5),
+    background = Color(0xFFF5F5F5),
+    surface = Color.0xFFFFFFFF,
+    onBackground = Color.Black,
+    onSurface = Color.Black,
+    outline = Color(0xFFE0E0E0),
+    error = CyberRed
 )
 
 @Composable
@@ -50,7 +50,6 @@ fun CyberFusionTheme(
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = androidx.compose.material3.Typography(),
         content = content
     )
 }

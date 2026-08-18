@@ -22,8 +22,8 @@ object CyberFusionLogger {
     private fun sanitize(message: String): String {
         var sanitized = message
         val patterns = listOf(
-            Regex(r"(api[_-]?key|apikey|secret|token|password|private[_-]?key)\s*[=:]\s*[\"']?[A-Za-z0-9_\-]{8,}", RegexOption.IGNORE_CASE),
-            Regex(r"(key|token|secret)\s*[=:]\s*[\"']?[A-Za-z0-9_\-]{8,}", RegexOption.IGNORE_CASE)
+            Regex("""(api[_-]?key|apikey|secret|token|password|private[_-]?key)\s*[=:]\s*["']?[A-Za-z0-9_\-]{8,}""", RegexOption.IGNORE_CASE),
+            Regex("""(key|token|secret)\s*[=:]\s*["']?[A-Za-z0-9_\-]{8,}""", RegexOption.IGNORE_CASE)
         )
         patterns.forEach { pattern ->
             sanitized = pattern.replace(sanitized) { "***REDACTED***" }

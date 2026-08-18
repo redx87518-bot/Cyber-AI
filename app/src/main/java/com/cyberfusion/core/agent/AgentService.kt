@@ -97,5 +97,5 @@ enum class AgentEventType {
     REPORT_GENERATED,
     TASK_COMPLETED,
     TASK_FAILED
-)
+}
 

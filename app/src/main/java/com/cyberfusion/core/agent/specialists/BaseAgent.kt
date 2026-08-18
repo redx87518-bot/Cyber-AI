@@ -1,7 +1,7 @@
 package com.cyberfusion.core.agent.specialists
+import com.cyberfusion.core.agent.AgentPlanStep
 import com.cyberfusion.core.agent.ToolExecutionResult
 
-import com.cyberfusion.core.agent.ToolExecutionResult
 import com.cyberfusion.core.ai.tools.ToolRepositories
 import com.cyberfusion.core.ai.provider.AIProviderConfig
 

@@ -90,8 +90,8 @@ object AIToolRegistry {
                 "getNvdCve" -> executeGetNvdCve(parameters, repositories)
                 "getOtxIntel" -> executeGetOtxIntel(parameters, repositories)
                 "scanUrl" -> executeScanUrl(parameters, repositories)
-                "getSettings" -> executeGetSettings(repositories),
-                "dnsLookup" -> executeDnsLookup(parameters, repositories),
+                "getSettings" -> executeGetSettings(repositories)
+                "dnsLookup" -> executeDnsLookup(parameters, repositories)
                 "rdapLookup" -> executeRdapLookup(parameters, repositories)
                 else -> AIToolResult(toolName, false, "", "Unknown tool: $toolName")
             }
@@ -584,7 +584,7 @@ object AIToolRegistry {
             val client = com.cyberfusion.core.network.client.CyberFusionHttpClient.client
             val response = client.get("https://dns.google/resolve?name=${java.net.URLEncoder.encode(domain, "UTF-8")}&type=$type").text
             val answers = mutableListOf<String>()
-            val regex = ""data":"([^"]+)"".toRegex().find(response)
+            val regex = "\"data\":\"([^\"]+)\"".toRegex().find(response)
             if (regex != null) {
                 answers.add(regex.groupValues[1])
             }

@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+build/
+*/build/
+!gradle/wrapper/gradle-wrapper.properties
+!**/src/**/build/
+
+# Android
+captures/
+local.properties
+*.iml
+.idea/
+*.hprof
+
+# Keystore
+*.jks
+*.keystore
+
+# Secrets
+secrets.properties
+*.secret
+.env
+
+# Misc
+.DS_Store
+*.log
+*.tmp
+*.swp

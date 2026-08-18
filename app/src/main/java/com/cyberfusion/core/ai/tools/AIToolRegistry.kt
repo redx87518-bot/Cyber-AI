@@ -376,7 +376,7 @@ object AIToolRegistry {
             appendLine()
             if (alerts.isNotEmpty()) {
                 appendLine("Recent Alerts:")
-                alerts.take(5).forEach { appendLine("- ${it.title} (Score: ${it.riskScore})") }
+                alerts.take(5).forEach { appendLine("- ${it.title} (${it.severity})") }
             }
             if (incidents.isNotEmpty()) {
                 appendLine("Active Incidents:")

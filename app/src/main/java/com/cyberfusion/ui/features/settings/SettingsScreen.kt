@@ -86,7 +86,7 @@ fun ProviderCard(provider: ProviderSettings, viewModel: SettingsViewModel) {
                 Button(onClick = {
                     viewModel.updateProviderApiKey(provider.id, apiKey)
                     viewModel.updateProviderModel(provider.id, model)
-                    viewModel.saveProviderSettings(provider.copy(apiKey = apiKey, model = model))
+                    viewModel.saveProviderSettings(provider.copy(apiKey = apiKey, model = model, isEnabled = true))
                 }, colors = ButtonDefaults.buttonColors(containerColor = Gold)) {
                     Text("Save")
                 }
@@ -98,6 +98,19 @@ fun ProviderCard(provider: ProviderSettings, viewModel: SettingsViewModel) {
                     }
                 }) {
                     Text("Test")
+                }
+                if (!provider.isEnabled) {
+                    OutlinedButton(onClick = {
+                        viewModel.saveProviderSettings(provider.copy(isEnabled = true))
+                    }) {
+                        Text("Enable")
+                    }
+                } else {
+                    OutlinedButton(onClick = {
+                        viewModel.saveProviderSettings(provider.copy(isEnabled = false))
+                    }) {
+                        Text("Disable")
+                    }
                 }
             }
         }

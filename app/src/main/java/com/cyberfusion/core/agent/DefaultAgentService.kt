@@ -148,16 +148,30 @@ class DefaultAgentService(
         return try {
             val credentials = settingsRepository.allCredentials.first()
             val providerCreds = credentials.filter { it.provider in listOf("openrouter", "groq", "gemini", "openai") && it.isEnabled }
-            if (providerCreds.isEmpty()) return null
-            val cred = providerCreds.firstOrNull { it.isPrimary } ?: providerCreds.first()
-            val model = cred.model.ifBlank { getDefaultModel(cred.provider) }
-            AIProviderConfig(
-                id = cred.provider,
-                name = cred.provider,
-                apiKey = cred.apiKey,
-                model = model,
-                isEnabled = cred.isEnabled
-            )
+            if (providerCreds.isNotEmpty()) {
+                val cred = providerCreds.firstOrNull { it.isPrimary } ?: providerCreds.first()
+                val model = cred.model.ifBlank { getDefaultModel(cred.provider) }
+                return AIProviderConfig(
+                    id = cred.provider,
+                    name = cred.provider,
+                    apiKey = cred.apiKey,
+                    model = model,
+                    isEnabled = cred.isEnabled
+                )
+            }
+            val localCreds = credentials.filter { it.provider == "local" && it.isEnabled }
+            if (localCreds.isNotEmpty()) {
+                val cred = localCreds.first()
+                return AIProviderConfig(
+                    id = "local",
+                    name = "Local AI",
+                    apiKey = "",
+                    model = cred.model.ifBlank { "local" },
+                    isEnabled = true,
+                    baseUrl = cred.model.ifBlank { "http://localhost:8080" }
+                )
+            }
+            null
         } catch (e: Exception) {
             null
         }
@@ -223,9 +237,13 @@ class DefaultAgentService(
     
     private suspend fun synthesizeResult(prompt: String, toolResults: List<String>, evidenceItems: List<EvidenceItem>, confidence: Double, provider: AIProviderConfig): String {
         if (toolResults.isEmpty()) {
-            val adapter = AIProviderFactory().create(provider)
-            val result = adapter.chat(listOf(com.cyberfusion.core.ai.provider.Message(role = "user", content = prompt)))
-            return result.getOrElse { "Analysis failed: ${it.message}" }
+            return try {
+                val adapter = AIProviderFactory().create(provider)
+                val result = adapter.chat(listOf(com.cyberfusion.core.ai.provider.Message(role = "user", content = prompt)))
+                result.getOrElse { "Analysis failed: ${it.message}" }
+            } catch (e: Exception) {
+                "I processed your request but could not generate an AI summary. Please try again or check your AI provider settings."
+            }
         }
         
         val combined = toolResults.joinToString("\n\n")
@@ -248,9 +266,15 @@ class DefaultAgentService(
             appendLine("4. Career learning notes")
         }
         
-        val adapter = AIProviderFactory().create(provider)
-        val result = adapter.chat(listOf(com.cyberfusion.core.ai.provider.Message(role = "user", content = summaryPrompt)))
-        return result.getOrElse { "Tool execution completed, but AI summarization failed: ${it.message}" }
+        return try {
+            val adapter = AIProviderFactory().create(provider)
+            val result = adapter.chat(listOf(com.cyberfusion.core.ai.provider.Message(role = "user", content = summaryPrompt)))
+            result.getOrElse { 
+                "Tool execution completed successfully, but AI summarization failed. Here are the raw results:\n\n$combined"
+            }
+        } catch (e: Exception) {
+            "Tool execution completed, but AI summarization encountered an error: ${e.message}. Here are the raw results:\n\n$combined"
+        }
     }
     
     private suspend fun generateReport(taskId: String, prompt: String, result: String, toolResults: List<String>, plan: AgentPlan, timeline: List<String>, toolsUsed: List<String>, evidenceItems: List<EvidenceItem>, confidence: Double, mitreMappings: List<String>, isoControls: List<String>): AgentReport {

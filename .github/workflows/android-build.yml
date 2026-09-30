@@ -5,6 +5,7 @@ on:
     branches: [ main, session/* ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -23,11 +24,12 @@ jobs:
         with:
           gradle-version: '8.5'
 
-      - name: Build with Gradle
-        run: gradle assembleDebug
+      - name: Build debug APK
+        run: gradle assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: CyberFusion-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

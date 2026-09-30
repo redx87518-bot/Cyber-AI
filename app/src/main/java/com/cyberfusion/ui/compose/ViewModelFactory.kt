@@ -42,7 +42,7 @@ class ViewModelFactory(
         return when {
             modelClass.isAssignableFrom(com.cyberfusion.ui.features.ai.ChatViewModel::class.java) ->
                 @Suppress("UNCHECKED_CAST")
-                com.cyberfusion.ui.features.ai.ChatViewModel(repositories.settingsRepository, agentService, conversationRepository, appContext) as T
+                com.cyberfusion.ui.features.ai.ChatViewModel(agentService, conversationRepository, appContext) as T
             modelClass.isAssignableFrom(com.cyberfusion.ui.features.threatintel.ThreatIntelViewModel::class.java) ->
                 @Suppress("UNCHECKED_CAST")
                 com.cyberfusion.ui.features.threatintel.ThreatIntelViewModel(repositories.settingsRepository) as T

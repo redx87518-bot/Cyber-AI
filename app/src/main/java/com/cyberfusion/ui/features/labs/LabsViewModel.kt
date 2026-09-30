@@ -7,7 +7,6 @@ import com.cyberfusion.core.database.room.entity.LabProgressEntity
 import com.cyberfusion.core.database.room.repository.LabsRepository
 import com.cyberfusion.core.labs.LabContent
 import com.cyberfusion.core.labs.LabsContent
-import com.cyberfusion.core.labs.LabEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,66 +24,70 @@ data class LabUiItem(
 
 data class LabsUiState(
     val labs: List<LabUiItem> = emptyList(),
+    val completed: Int = 0,
+    val total: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null
-)
+) {
+    val progressFraction: Float
+        get() = if (total > 0) completed.toFloat() / total else 0f
+}
 
-class LabsViewModel(
-    private val labsRepository: LabsRepository
-) : ViewModel() {
+class LabsViewModel(private val labsRepository: LabsRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(LabsUiState())
     val uiState: StateFlow<LabsUiState> = _uiState.asStateFlow()
-    
+
     init {
         loadLabs()
     }
-    
+
     private fun loadLabs() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val existingLabs = labsRepository.allLabs.first()
-                if (existingLabs.isEmpty()) {
+                if (labsRepository.allLabs.first().isEmpty()) {
                     seedLabs()
                 }
                 val labs = labsRepository.allLabs.first()
-                val uiItems = labs.map { lab ->
-                    val progress = labsRepository.getProgressByLabId(lab.id)
+                val items = labs.map { lab ->
                     LabUiItem(
                         id = lab.id,
                         title = lab.title,
                         description = lab.description,
                         difficulty = lab.difficulty,
                         category = lab.category,
-                        progress = progress
+                        progress = labsRepository.getProgressByLabId(lab.id)
                     )
                 }
-                _uiState.value = _uiState.value.copy(labs = uiItems, isLoading = false)
+                _uiState.value = LabsUiState(
+                    labs = items,
+                    completed = items.count { it.progress?.completed == true },
+                    total = items.size,
+                    isLoading = false
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             }
         }
     }
-    
+
     private suspend fun seedLabs() {
-        LabsContent.allLabs.forEach { labContent ->
-            val labEntity = LabEntity(
-                id = labContent.id,
-                title = labContent.title,
-                description = labContent.description,
-                category = labContent.category,
-                difficulty = labContent.difficulty,
-                scenario = labContent.scenario,
-                evidence = labContent.evidence ?: "",
-                questions = "",
-                hints = "",
-                createdAt = System.currentTimeMillis()
+        LabsContent.allLabs.forEach { content ->
+            labsRepository.insertLab(
+                LabEntity(
+                    id = content.id,
+                    title = content.title,
+                    description = content.description,
+                    category = content.category,
+                    difficulty = content.difficulty,
+                    scenario = content.scenario,
+                    evidence = content.evidence ?: "",
+                    questions = "",
+                    hints = ""
+                )
             )
-            labsRepository.insertLab(labEntity)
         }
     }
-    
-    fun getLabContent(id: Long): LabContent? {
-        return LabsContent.allLabs.find { it.id == id }
-    }
+
+    fun getLabContent(id: Long): LabContent? = LabsContent.allLabs.find { it.id == id }
 }

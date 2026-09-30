@@ -157,7 +157,7 @@ fun DashboardScreen(
             item {
                 Column(Modifier.padding(horizontal = 16.dp)) {
                     Spacer(Modifier.height(18.dp))
-                    SectionHeader("Live Posture", "Counts update in real time")
+                    SectionHeader("Live Posture", subtitle = "Counts update in real time")
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         StatTile("Alerts", state.alertsCount.toString(), Cyan, Modifier.weight(1f))

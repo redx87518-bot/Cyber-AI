@@ -2,7 +2,6 @@ package com.cyberfusion.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -33,7 +32,7 @@ fun ScreenScaffold(
     subtitle: String? = null,
     navController: NavController? = null,
     showBottomBar: Boolean = false,
-    actions: @Composable RowScope.() -> Unit = {},
+    actions: @Composable () -> Unit = {},
     content: @Composable () -> Unit
 ) {
     CyberBackground {

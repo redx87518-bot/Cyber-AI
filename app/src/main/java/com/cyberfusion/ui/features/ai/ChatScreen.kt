@@ -297,7 +297,7 @@ fun ChatScreen(
                         .clip(CircleShape)
                         .background(
                             when {
-                                uiState.isLoading -> Ink4
+                                uiState.isLoading -> Brush.linearGradient(listOf(Ink4, Ink4))
                                 canSend -> Brush.linearGradient(listOf(Cyan, Violet))
                                 else -> Brush.linearGradient(listOf(Ink4, Ink4))
                             }

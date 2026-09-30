@@ -1120,17 +1120,17 @@ object LabsContent {
         You are handed a forensic IMAGE (never the live machine) plus:
         - Registry hives (SYSTEM, SOFTWARE, SAM, NTUSER.DAT)
         - C:\\Windows\\Prefetch
-        - $MFT and USN journal
+        - ${'$'}MFT and USN journal
         - Chrome/Edge history and downloads
         - USBSTOR registry artifacts
 
         Known facts: DLP flagged a 6 GB 7z archive named clients_master.7z at 23:41 on Mar 14.
         """.trimIndent(),
-        evidence = "Artifact set: registry hives, Prefetch, $MFT, USN, browser history, USBSTOR\nDLP flag: clients_master.7z, 6 GB, 23:41 Mar 14\nMedia: forensic image (chain of custody logged)",
+        evidence = "Artifact set: registry hives, Prefetch, ${'$'}MFT, USN, browser history, USBSTOR\nDLP flag: clients_master.7z, 6 GB, 23:41 Mar 14\nMedia: forensic image (chain of custody logged)",
         hints = mapOf(
             1 to "Shimcache/AmCache and Prefetch give you program EXECUTION with timestamps — build the spine of the timeline there.",
             2 to "USBSTOR + setupapi.dev.log answers 'was removable media involved' in minutes.",
-            3 to "$MFT standard information vs $FILE_NAME attributes can reveal timestomping discrepancies.",
+            3 to "${'$'}MFT standard information vs ${'$'}FILE_NAME attributes can reveal timestomping discrepancies.",
             4 to "A forensic timeline needs SOURCE attribution — every event should cite its artifact."
         ),
         questions = listOf(
@@ -1172,15 +1172,15 @@ object LabsContent {
             ),
             LabQuestion(
                 id = 4,
-                question = "$FILE_NAME says file created 09:00, $STANDARD_INFORMATION says 03:00. Likely explanation?",
+                question = "${'$'}FILE_NAME says file created 09:00, ${'$'}STANDARD_INFORMATION says 03:00. Likely explanation?",
                 options = listOf(
                     "Clock drift, no action needed",
-                    "Timestomping: $SI timestamps were manipulated (T1070.006) — corroborate with $MFT/USN journals",
+                    "Timestomping: ${'$'}SI timestamps were manipulated (T1070.006) — corroborate with ${'$'}MFT/USN journals",
                     "The MFT is corrupt",
                     "Timezone mismatch only"
                 ),
                 correctAnswer = 1,
-                explanation = "$SI vs $FN divergence is the classic timestomping signature; journals and logs provide ground truth."
+                explanation = "${'$'}SI vs ${'$'}FN divergence is the classic timestomping signature; journals and logs provide ground truth."
             ),
             LabQuestion(
                 id = 5,

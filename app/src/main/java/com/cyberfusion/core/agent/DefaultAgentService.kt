@@ -334,25 +334,28 @@ class DefaultAgentService(
                 finalAnswer = completion
             } else {
                 messages.add(Message(role = "assistant", content = completion))
-                val resultsBlock = toolCalls.joinToString("\n\n") { call ->
-                    toolsUsed.add(call.name)
-                    val result = runCatching {
-                        AIToolRegistry.executeTool(call.name, call.args, repositories)
-                    }.getOrElse { e ->
-                        AIToolResult(call.name, false, "", "Exception: ${e.message}")
-                    }
-                    emitEvent(
-                        AgentEvent(
-                            taskId = taskId,
-                            eventType = AgentEventType.TOOL_EXECUTION,
-                            agent = "Rax AI",
-                            tool = call.name,
-                            status = if (result.success) AgentStepStatus.SUCCESS else AgentStepStatus.FAILED,
-                            details = mapOf("args" to call.args.toString().take(200))
+                val resultsBlock = buildString {
+                    toolCalls.forEachIndexed { callIndex, call ->
+                        toolsUsed.add(call.name)
+                        val result = try {
+                            AIToolRegistry.executeTool(call.name, call.args, repositories)
+                        } catch (e: Exception) {
+                            AIToolResult(call.name, false, "", "Exception: ${e.message}")
+                        }
+                        emitEvent(
+                            AgentEvent(
+                                taskId = taskId,
+                                eventType = AgentEventType.TOOL_EXECUTION,
+                                agent = "Rax AI",
+                                tool = call.name,
+                                status = if (result.success) AgentStepStatus.SUCCESS else AgentStepStatus.FAILED,
+                                details = mapOf("args" to call.args.toString().take(200))
+                            )
                         )
-                    )
-                    "Tool ${call.name}(${call.args.entries.joinToString(", ") { "${it.key}=${it.value}" }}) ->\n" +
-                        (result.result ?: result.error ?: "no output")
+                        if (callIndex > 0) append("\n\n")
+                        append("Tool ${call.name}(${call.args.entries.joinToString(", ") { "${it.key}=${it.value}" }}) ->\n")
+                        append(result.result ?: result.error ?: "no output")
+                    }
                 }
                 messages.add(Message(role = "user", content = "TOOL RESULTS:\n$resultsBlock\n\nContinue: call more tools if needed, or give the final answer now."))
             }

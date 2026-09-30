@@ -190,7 +190,7 @@ private fun ProviderCard(provider: ProviderSettings, viewModel: SettingsViewMode
                         unfocusedTextColor = TextHi
                     )
                 )
-                androidx.compose.material3.ExposedDropdownMenu(
+                ExposedDropdownMenu(
                     expanded = modelMenuOpen,
                     onDismissRequest = { modelMenuOpen = false }
                 ) {

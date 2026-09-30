@@ -33,6 +33,7 @@ data class ApiSettings(
 
 data class SettingsUiState(
     val providers: List<ProviderSettings> = listOf(
+        ProviderSettings("rax", "Rax AI", model = "rax-4.5"),
         ProviderSettings("openrouter", "OpenRouter", model = "mistralai/mistral-7b-instruct"),
         ProviderSettings("groq", "Groq", model = "llama2-70b-4096"),
         ProviderSettings("gemini", "Gemini", model = "gemini-pro"),

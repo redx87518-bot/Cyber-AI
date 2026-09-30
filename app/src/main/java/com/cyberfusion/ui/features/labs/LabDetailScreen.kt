@@ -12,9 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
@@ -28,22 +31,38 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.cyberfusion.core.labs.LabEngine
+import com.cyberfusion.ui.compose.ChatPromptBus
 import com.cyberfusion.ui.components.EmptyState
 import com.cyberfusion.ui.components.Panel
 import com.cyberfusion.ui.components.ScreenScaffold
 import com.cyberfusion.ui.components.SectionHeader
+import com.cyberfusion.ui.components.StatusChip
 import com.cyberfusion.ui.compose.LocalViewModelFactory
+import com.cyberfusion.ui.navigation.Screen
+import com.cyberfusion.ui.theme.Amber
+import com.cyberfusion.ui.theme.Coral
 import com.cyberfusion.ui.theme.Cyan
-import com.cyberfusion.ui.theme.Ink4
 import com.cyberfusion.ui.theme.Mint
 import com.cyberfusion.ui.theme.TextHi
 import com.cyberfusion.ui.theme.TextLo
-import com.cyberfusion.ui.theme.severityColor
+import com.cyberfusion.ui.theme.Violet
+
+private val DangerColor = Color(0xFFFB7185)
+private val Ink0Button = Color(0xFF070B14)
+
+private fun difficultyColor(difficulty: String): Color = when (difficulty.lowercase()) {
+    "beginner" -> Mint
+    "intermediate" -> Cyan
+    "advanced" -> Coral
+    else -> TextLo
+}
 
 @Composable
 fun LabDetailScreen(
@@ -88,46 +107,63 @@ fun LabDetailScreen(
             if (!labContent.evidence.isNullOrBlank()) {
                 item {
                     Panel(borderColor = Cyan.copy(alpha = 0.4f)) {
-                        SectionHeader("Evidence")
+                        SectionHeader("Evidence", subtitle = "Artifacts recovered from the scene")
                         Spacer(Modifier.height(8.dp))
                         Text(
                             labContent.evidence!!,
                             style = MaterialTheme.typography.bodySmall,
                             color = TextLo,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            fontFamily = FontFamily.Monospace
                         )
                     }
                 }
             }
             items(labContent.questions.size) { qIndex ->
                 val question = labContent.questions[qIndex]
-                Panel {
-                    Text(
-                        "Q${qIndex + 1}. ${question.question}",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                val answered = selectedAnswers[question.id]
+                Panel(borderColor = if (answered != null) Cyan.copy(alpha = 0.3f) else Color(0xFF1E2C4C).copy(alpha = 0.55f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        StatusChip("Q${qIndex + 1}", Cyan, dot = false)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            question.question,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                     Spacer(Modifier.height(8.dp))
                     question.options.forEachIndexed { index, option ->
+                        val isSelected = answered == index
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             RadioButton(
-                                selected = selectedAnswers[question.id] == index,
+                                selected = isSelected,
                                 onClick = { selectedAnswers = selectedAnswers + (question.id to index) }
                             )
-                            Spacer(Modifier.width(4.dp))
-                            Text(option, style = MaterialTheme.typography.bodyMedium, color = TextLo)
+                            Text(
+                                option,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isSelected) TextHi else TextLo,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (showResult && index == question.correctAnswer) {
+                                Text("✓", color = Mint, fontWeight = FontWeight.Bold)
+                            } else if (showResult && isSelected) {
+                                Text("✗", color = DangerColor, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                     if (showResult) {
-                        val isCorrect = selectedAnswers[question.id] == question.correctAnswer
+                        val isCorrect = answered == question.correctAnswer
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text = if (isCorrect) "✓ Correct" else "✗ Incorrect — ${question.explanation}",
+                            text = if (isCorrect) "Correct — ${question.explanation}"
+                            else "Incorrect — ${question.explanation}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (isCorrect) Mint else Color(0xFFFB7185)
+                            color = if (isCorrect) Mint else TextLo
                         )
                     }
                 }
@@ -136,13 +172,15 @@ fun LabDetailScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = {
-                            score = LabEngine.calculateScore(labContent.questions, selectedAnswers)
+                            val result = LabEngine.calculateScore(labContent.questions, selectedAnswers)
+                            score = result
                             showResult = true
+                            labsViewModel.saveAttempt(labContent.id, selectedAnswers, result)
                         },
-                        enabled = selectedAnswers.size == labContent.questions.size,
-                        colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Color(0xFF070B14))
+                        enabled = selectedAnswers.size == labContent.questions.size && !showResult,
+                        colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Ink0Button)
                     ) {
-                        Text("Submit Answers")
+                        Text(if (showResult) "Submitted" else "Submit Answers")
                     }
                     OutlinedButton(onClick = { navController.popBackStack() }) {
                         Text("Back")
@@ -151,17 +189,57 @@ fun LabDetailScreen(
             }
             if (showResult) {
                 item {
-                    Panel(borderColor = Mint.copy(alpha = 0.5f)) {
-                        SectionHeader("Result")
+                    val passed = score >= 70
+                    Panel(
+                        borderColor = (if (passed) Mint else Amber).copy(alpha = 0.5f)
+                    ) {
+                        SectionHeader(
+                            "Result",
+                            subtitle = if (passed) "Lab mastered — progress saved" else "Good attempt — review and retry"
+                        )
                         Spacer(Modifier.height(8.dp))
                         Text(
                             "Score: $score%",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Mint
+                            color = if (passed) Mint else Amber
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(LabEngine.getFeedback(score), style = MaterialTheme.typography.bodyMedium, color = TextLo)
+                        if (!labContent.debrief.isNullOrBlank()) {
+                            Spacer(Modifier.height(10.dp))
+                            SectionHeader("Debrief")
+                            Spacer(Modifier.height(4.dp))
+                            Text(labContent.debrief!!, style = MaterialTheme.typography.bodySmall, color = TextHi)
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    ChatPromptBus.queue(
+                                        "I just finished the \"${labContent.title}\" lab and scored $score%. " +
+                                            "Act as my mentor: explain the key concepts I should take away, " +
+                                            "where analysts usually go wrong in this scenario, and what to study next."
+                                    )
+                                    navController.navigate(Screen.AI.route)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Violet, contentColor = Ink0Button)
+                            ) {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.width(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Ask AI mentor", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            OutlinedButton(onClick = {
+                                navController.navigate(Screen.Labs.route)
+                            }) {
+                                Text("More labs")
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    modifier = Modifier.width(14.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

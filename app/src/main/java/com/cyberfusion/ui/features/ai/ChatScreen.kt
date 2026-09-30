@@ -94,6 +94,13 @@ fun ChatScreen(
         if (target > 0) listState.animateScrollToItem(target - 1)
     }
 
+    // Send prompts queued from other screens (e.g. the AI mentor hand-off in Labs).
+    LaunchedEffect(Unit) {
+        com.cyberfusion.ui.compose.ChatPromptBus.consume()?.let { queued ->
+            viewModel.sendMessage(queued)
+        }
+    }
+
     CyberBackground {
         Column(Modifier.fillMaxSize()) {
             // ── Header ──────────────────────────────────────────────────────
@@ -120,12 +127,14 @@ fun ChatScreen(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "CyberFusion AI",
+                        "CyberFusion AI · Rax",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        if (uiState.isLoading) "Analyzing & executing tools…" else "Autonomous security agent · online",
+                        if (uiState.isLoading) "Reasoning & calling security tools…"
+                        else if (uiState.memoryCount > 0) "Rax AI agent · online · ${uiState.memoryCount} memories"
+                        else "Rax AI agent · online",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (uiState.isLoading) Cyan else Mint
                     )

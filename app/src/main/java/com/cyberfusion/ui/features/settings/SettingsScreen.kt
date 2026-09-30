@@ -14,11 +14,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -46,16 +48,17 @@ import com.cyberfusion.ui.components.ScreenScaffold
 import com.cyberfusion.ui.components.SectionHeader
 import com.cyberfusion.ui.components.StatusChip
 import com.cyberfusion.ui.compose.LocalViewModelFactory
-import com.cyberfusion.ui.theme.Coral
 import com.cyberfusion.ui.theme.Cyan
 import com.cyberfusion.ui.theme.Ink3
 import com.cyberfusion.ui.theme.Ink4
 import com.cyberfusion.ui.theme.Mint
 import com.cyberfusion.ui.theme.TextHi
 import com.cyberfusion.ui.theme.TextLo
+import com.cyberfusion.ui.theme.Violet
 import kotlinx.coroutines.launch
 
 private val Ink0Button = Color(0xFF070B14)
+private val CoralButton = Color(0xFFFB7185)
 
 @Composable
 fun SettingsScreen(
@@ -80,6 +83,7 @@ fun SettingsScreen(
                     Spacer(Modifier.height(6.dp))
                 }
             }
+            item { RaxCallout() }
             items(uiState.providers.size) { index ->
                 ProviderCard(provider = uiState.providers[index], viewModel = viewModel)
             }
@@ -98,23 +102,54 @@ fun SettingsScreen(
 }
 
 @Composable
+private fun RaxCallout() {
+    Panel(borderColor = Cyan.copy(alpha = 0.45f)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.AutoAwesome,
+                contentDescription = null,
+                tint = Cyan,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(
+                    "Rax AI · primary engine",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = TextHi
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "The agent runs on Rax AI with tool calling and long-term memory. Pick rax-4.0 for speed or rax-4.5 for deep 262K-context reasoning. Free key at ai.raxcore.dev.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextLo
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProviderCard(provider: ProviderSettings, viewModel: SettingsViewModel) {
     var apiKey by remember(provider.id) { mutableStateOf(provider.apiKey) }
     var model by remember(provider.id) { mutableStateOf(provider.model) }
+    var modelMenuOpen by remember(provider.id) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val connected = provider.status == "Connected"
+    val isRax = provider.id == "rax"
 
-    Panel {
+    Panel(borderColor = if (isRax) Cyan.copy(alpha = 0.35f) else Ink4.copy(alpha = 0.55f)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 Icons.Default.Psychology,
                 contentDescription = null,
-                tint = if (provider.isEnabled) Cyan else TextLo,
+                tint = if (provider.isEnabled) (if (isRax) Cyan else Mint) else TextLo,
                 modifier = Modifier.size(22.dp)
             )
             Spacer(Modifier.width(10.dp))
             Text(
-                provider.name,
+                provider.name + if (isRax) "  ★" else "",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
@@ -125,15 +160,79 @@ private fun ProviderCard(provider: ProviderSettings, viewModel: SettingsViewMode
         CyberTextField(
             value = apiKey,
             onValueChange = { apiKey = it },
-            label = "API Key",
+            label = if (isRax) "Rax API key (rax_…)" else "API Key",
             isPassword = true
         )
         Spacer(Modifier.height(8.dp))
-        CyberTextField(
-            value = model,
-            onValueChange = { model = it },
-            label = "Model"
-        )
+
+        if (isRax) {
+            // Model selector with both Rax models available for selection.
+            ExposedDropdownMenuBox(
+                expanded = modelMenuOpen,
+                onExpandedChange = { modelMenuOpen = it }
+            ) {
+                OutlinedTextField(
+                    value = model,
+                    onValueChange = { model = it },
+                    label = { Text("Model", color = TextLo) },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Cyan.copy(alpha = 0.6f),
+                        unfocusedBorderColor = Ink4,
+                        focusedContainerColor = Ink3,
+                        unfocusedContainerColor = Ink3,
+                        cursorColor = Cyan,
+                        focusedTextColor = TextHi,
+                        unfocusedTextColor = TextHi
+                    )
+                )
+                androidx.compose.material3.ExposedDropdownMenu(
+                    expanded = modelMenuOpen,
+                    onDismissRequest = { modelMenuOpen = false }
+                ) {
+                    RAX_MODELS.forEach { candidate ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(candidate.id, color = TextHi, style = MaterialTheme.typography.titleSmall)
+                                    Text(candidate.blurb, color = TextLo, style = MaterialTheme.typography.bodySmall)
+                                }
+                            },
+                            onClick = {
+                                model = candidate.id
+                                modelMenuOpen = false
+                            }
+                        )
+                    }
+                }
+            }
+            if (model == "rax-4.0") {
+                Text(
+                    "rax-4.0 — open-source workhorse, sub-50ms, best for real-time triage.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextLo,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            } else if (model == "rax-4.5") {
+                Text(
+                    "rax-4.5 — flagship deep thinker, 262K context, best for long investigations.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Violet,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        } else {
+            CyberTextField(
+                value = model,
+                onValueChange = { model = it },
+                label = "Model"
+            )
+        }
+
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
@@ -245,3 +344,10 @@ private fun CyberTextField(
         )
     )
 }
+
+private data class RaxModelChoice(val id: String, val blurb: String)
+
+private val RAX_MODELS = listOf(
+    RaxModelChoice("rax-4.0", "Fast workhorse · sub-50ms · general triage"),
+    RaxModelChoice("rax-4.5", "Deep thinker · 262K context · long investigations")
+)

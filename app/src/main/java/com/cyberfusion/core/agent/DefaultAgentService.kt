@@ -1,8 +1,11 @@
 package com.cyberfusion.core.agent
 import com.cyberfusion.core.agent.ToolExecutionResult
 
+import com.cyberfusion.core.ai.provider.AITool
+import com.cyberfusion.core.ai.provider.AIToolResult
 import com.cyberfusion.core.ai.provider.AIProviderConfig
 import com.cyberfusion.core.ai.provider.AIProviderFactory
+import com.cyberfusion.core.ai.provider.Message
 import com.cyberfusion.core.ai.tools.AIToolRegistry
 import com.cyberfusion.core.ai.tools.ToolRepositories
 import com.cyberfusion.core.database.room.entity.ConversationEntity
@@ -20,8 +23,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -32,6 +33,7 @@ class DefaultAgentService(
     private val settingsRepository: SettingsRepository,
     private val repositories: ToolRepositories,
     private val conversationRepository: ConversationRepository,
+    private val memoryStore: AgentMemoryStore,
     private val appContext: android.content.Context
 ) : AgentService {
     private val _events = MutableSharedFlow<AgentEvent>()
@@ -108,21 +110,39 @@ class DefaultAgentService(
             }
             
             val confidence = EvidenceManager.calculateTaskConfidence(taskId)
-            finalResult = synthesizeResult(request.prompt, toolResults, evidenceItems, confidence, provider)
+
+            // Agentic tool-calling loop: Rax AI reasons over the full security tool
+            // registry with long-term memory injected, calling tools as needed.
+            val iocHint = detectIocHint(request.prompt)
+            val memoryBlock = runCatching { memoryStore.recall(iocHint) }.getOrDefault("")
+            val finalResult = runAgenticLoop(
+                taskId = taskId,
+                provider = provider,
+                prompt = request.prompt,
+                priorToolResults = toolResults,
+                toolsUsed = toolsUsed,
+                confidence = confidence,
+                memoryBlock = memoryBlock
+            )
+
+            // Persist durable facts the model learned (```memory``` blocks) and
+            // strip them from the user-facing answer.
+            runCatching { memoryStore.remember(finalResult, iocHint) }
+            val userFacingResult = stripMemoryBlocks(finalResult)
             
             val report = if (request.requireReport || request.requirePdf) {
-                generateReport(taskId, request.prompt, finalResult, toolResults, plan, timeline, toolsUsed, evidenceItems, confidence, mitreMappings, isoControls)
+                generateReport(taskId, request.prompt, userFacingResult, toolResults, plan, timeline, toolsUsed, evidenceItems, confidence, mitreMappings, isoControls)
             } else null
             
             val response = AgentResponse(
                 taskId = taskId,
                 status = AgentStatus.COMPLETED,
-                result = finalResult,
+                result = userFacingResult,
                 plan = plan,
                 report = report
             )
             
-            taskStore[taskId] = task.copy(status = AgentStatus.COMPLETED, result = finalResult)
+            taskStore[taskId] = task.copy(status = AgentStatus.COMPLETED, result = userFacingResult)
             emitEvent(AgentEvent(taskId = taskId, eventType = AgentEventType.TASK_COMPLETED, agent = "Orchestrator", tool = null, status = AgentStepStatus.SUCCESS))
             
             response
@@ -131,8 +151,6 @@ class DefaultAgentService(
             AgentResponse(taskId, AgentStatus.FAILED, error = e.message)
         }
     }
-    
-    private lateinit var finalResult: String
     
     override suspend fun cancel(taskId: String): Boolean {
         val task = taskStore[taskId] ?: return false
@@ -147,9 +165,13 @@ class DefaultAgentService(
     private suspend fun loadProvider(): AIProviderConfig? {
         return try {
             val credentials = settingsRepository.allCredentials.first()
-            val providerCreds = credentials.filter { it.provider in listOf("openrouter", "groq", "gemini", "openai") && it.isEnabled }
+            val providerCreds = credentials.filter { it.provider in listOf("rax", "openrouter", "groq", "gemini", "openai") && it.isEnabled }
             if (providerCreds.isNotEmpty()) {
-                val cred = providerCreds.firstOrNull { it.isPrimary } ?: providerCreds.first()
+                // Rax AI is the platform's primary engine; prefer it, then the
+                // user's explicit primary, then the first enabled provider.
+                val cred = providerCreds.firstOrNull { it.provider == "rax" }
+                    ?: providerCreds.firstOrNull { it.isPrimary }
+                    ?: providerCreds.first()
                 val model = cred.model.ifBlank { getDefaultModel(cred.provider) }
                 return AIProviderConfig(
                     id = cred.provider,
@@ -179,11 +201,12 @@ class DefaultAgentService(
     
     private fun getDefaultModel(providerId: String): String {
         return when (providerId) {
+            "rax" -> "rax-4.5"
             "openrouter" -> "mistralai/mistral-7b-instruct"
             "groq" -> "llama2-70b-4096"
             "gemini" -> "gemini-pro"
             "openai" -> "gpt-3.5-turbo"
-            else -> "gpt-3.5-turbo"
+            else -> "rax-4.5"
         }
     }
     
@@ -233,6 +256,176 @@ class DefaultAgentService(
         } catch (e: Exception) {
             ToolExecutionResult(false, error = e.message)
         }
+    }
+    
+    /**
+     * ReAct-style agentic loop: the model sees the full security tool registry
+     * (with real parameter schemas) and its long-term memory, and autonomously
+     * calls tools with concrete arguments until it produces a final answer.
+     * Tool results are appended to the conversation and fed back for the next
+     * reasoning step. Bounded by [MAX_ITERATIONS].
+     */
+    private suspend fun runAgenticLoop(
+        taskId: String,
+        provider: AIProviderConfig,
+        prompt: String,
+        priorToolResults: List<String>,
+        toolsUsed: MutableList<String>,
+        confidence: Double,
+        memoryBlock: String
+    ): String {
+        val adapter = AIProviderFactory().create(provider)
+        val registry = AIToolRegistry.tools
+        
+        val toolCatalog = registry.joinToString("\n") { tool ->
+            val params = if (tool.parameters.isEmpty()) "(no parameters)"
+            else tool.parameters.entries.joinToString(", ") { "${it.key}: ${it.value}" }
+            "- ${tool.name}($params): ${tool.description}"
+        }
+        
+        val systemPrompt = buildString {
+            appendLine("You are CyberFusion AI, an autonomous senior security analyst operating inside an Android SOC platform.")
+            appendLine("You have direct access to the following security tools. Call them whenever they help answer the request:")
+            appendLine()
+            appendLine(toolCatalog)
+            appendLine()
+            appendLine("Tool-calling rules:")
+            appendLine("1. Plan silently, then call the tools you need with concrete, correct arguments (real IPs, hashes, CVE IDs from the user's message or prior results).")
+            appendLine("2. You may call several tools in one turn. Prefer enrichIOC for broad indicator lookups; use specific tools for focused checks.")
+            appendLine("3. After each tool round, analyze the results and either call more tools or produce the final answer.")
+            appendLine("4. Final answers must be actionable: executive summary, key findings, severity, recommended actions, and short career-learning notes for the analyst.")
+            appendLine("5. Never invent tool output. If a tool returns nothing useful, say so plainly.")
+            if (memoryBlock.isNotBlank()) {
+                appendLine()
+                appendLine(memoryBlock)
+            }
+            appendLine()
+            appendLine(AgentMemoryStore.MEMORY_PROTOCOL)
+        }
+        
+        val messages = mutableListOf<Message>(
+            Message(role = "system", content = systemPrompt),
+            Message(role = "user", content = prompt)
+        )
+        
+        // Deterministic plan steps already ran before the loop; expose their
+        // results so the model can build on them instead of re-running blindly.
+        if (priorToolResults.isNotEmpty()) {
+            messages.add(
+                Message(
+                    role = "user",
+                    content = "Pre-executed deterministic tool results:\n" + priorToolResults.joinToString("\n\n")
+                )
+            )
+        }
+        
+        var finalAnswer: String? = null
+        var iteration = 0
+        while (iteration < MAX_ITERATIONS && finalAnswer == null) {
+            iteration++
+            val completion = try {
+                adapter.chat(messages, registry).getOrElse { return fallbackSynthesis(prompt, priorToolResults, it.message) }
+            } catch (e: Exception) {
+                return fallbackSynthesis(prompt, priorToolResults, e.message)
+            }
+            
+            val toolCalls = parseToolCalls(completion)
+            if (toolCalls.isEmpty()) {
+                finalAnswer = completion
+            } else {
+                messages.add(Message(role = "assistant", content = completion))
+                val resultsBlock = toolCalls.joinToString("\n\n") { call ->
+                    toolsUsed.add(call.name)
+                    val result = runCatching {
+                        AIToolRegistry.executeTool(call.name, call.args, repositories)
+                    }.getOrElse { e ->
+                        AIToolResult(call.name, false, "", "Exception: ${e.message}")
+                    }
+                    emitEvent(
+                        AgentEvent(
+                            taskId = taskId,
+                            eventType = AgentEventType.TOOL_EXECUTION,
+                            agent = "Rax AI",
+                            tool = call.name,
+                            status = if (result.success) AgentStepStatus.SUCCESS else AgentStepStatus.FAILED,
+                            details = mapOf("args" to call.args.toString().take(200))
+                        )
+                    )
+                    "Tool ${call.name}(${call.args.entries.joinToString(", ") { "${it.key}=${it.value}" }}) ->\n" +
+                        (result.result ?: result.error ?: "no output")
+                }
+                messages.add(Message(role = "user", content = "TOOL RESULTS:\n$resultsBlock\n\nContinue: call more tools if needed, or give the final answer now."))
+            }
+        }
+        
+        return finalAnswer ?: fallbackSynthesis(prompt, priorToolResults, "Iteration limit reached")
+    }
+    
+    /**
+     * The model expresses tool calls as fenced blocks; this keeps the loop
+     * provider-agnostic (no native function-calling required):
+     *
+     * ```tool
+     * [{"tool":"checkAbuseIPDB","args":{"ip":"1.2.3.4"}}]
+     * ```
+     */
+    private fun parseToolCalls(output: String): List<ToolCall> {
+        val block = TOOL_BLOCK_REGEX.find(output)?.groupValues?.get(1) ?: return emptyList()
+        return try {
+            val array = org.json.JSONArray(block.trim())
+            (0 until array.length()).mapNotNull { i ->
+                val obj = array.optJSONObject(i) ?: return@mapNotNull null
+                val name = obj.optString("tool").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val argsObj = obj.optJSONObject("args") ?: org.json.JSONObject()
+                val args = mutableMapOf<String, String>()
+                argsObj.keys().forEach { key -> args[key] = argsObj.optString(key, "") }
+                ToolCall(name, args)
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    
+    private fun stripMemoryBlocks(text: String): String =
+        MEMORY_BLOCK_REGEXCompat.replace(text, "").trim()
+    
+    private suspend fun fallbackSynthesis(prompt: String, priorToolResults: List<String>, reason: String?): String {
+        if (priorToolResults.isEmpty()) {
+            return "Agent could not complete reasoning: ${reason ?: "unknown error"}. Check the AI provider key in Settings and retry."
+        }
+        val combined = priorToolResults.joinToString("\n\n")
+        return try {
+            val provider = loadProvider() ?: return "Tool results collected, but no AI provider is available for synthesis.\n\n$combined"
+            val adapter = AIProviderFactory().create(provider)
+            val result = adapter.chat(
+                listOf(
+                    Message(role = "system", content = "You are CyberFusion AI. Summarize the following raw tool results into an actionable security analysis."),
+                    Message(role = "user", content = "Request: $prompt\n\n$combined")
+                )
+            )
+            result.getOrElse { "Tool results (AI synthesis unavailable):\n\n$combined" }
+        } catch (e: Exception) {
+            "Tool results (AI synthesis failed: ${e.message}):\n\n$combined"
+        }
+    }
+    
+    private fun detectIocHint(prompt: String): String? {
+        val ip = Regex("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b").find(prompt)?.value
+        if (ip != null) return ip
+        val hash = Regex("\\b[a-fA-F0-9]{32,64}\\b").find(prompt)?.value
+        if (hash != null) return hash
+        val cve = Regex("\\bCVE-\\d{4}-\\d{4,7}\\b", RegexOption.IGNORE_CASE).find(prompt)?.value
+        if (cve != null) return cve
+        val domain = Regex("\\b(?:[a-z0-9-]+\\.)+[a-z]{2,}\\b", RegexOption.IGNORE_CASE).find(prompt)?.value
+        return domain
+    }
+    
+    private data class ToolCall(val name: String, val args: Map<String, String>)
+    
+    private companion object {
+        val TOOL_BLOCK_REGEX = Regex("```tool\\s*([\\s\\S]*?)```", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
+        val MEMORY_BLOCK_REGEXCompat = Regex("```memory\\s*([\\s\\S]*?)```", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
+        const val MAX_ITERATIONS = 8
     }
     
     private suspend fun synthesizeResult(prompt: String, toolResults: List<String>, evidenceItems: List<EvidenceItem>, confidence: Double, provider: AIProviderConfig): String {

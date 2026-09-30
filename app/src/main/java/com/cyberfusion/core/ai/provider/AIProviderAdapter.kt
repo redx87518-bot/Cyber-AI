@@ -24,6 +24,7 @@ interface AIProviderAdapter {
 class AIProviderFactory {
     fun create(config: AIProviderConfig): AIProviderAdapter {
         return when (config.id) {
+            "rax" -> RaxAIAdapter(config)
             "openrouter" -> OpenRouterAdapter(config)
             "groq" -> GroqAdapter(config)
             "gemini" -> GeminiAdapter(config)

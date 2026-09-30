@@ -2,6 +2,7 @@ package com.cyberfusion.ui.features.labs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cyberfusion.core.database.room.entity.LabAttemptEntity
 import com.cyberfusion.core.database.room.entity.LabEntity
 import com.cyberfusion.core.database.room.entity.LabProgressEntity
 import com.cyberfusion.core.database.room.repository.LabsRepository
@@ -90,4 +91,43 @@ class LabsViewModel(private val labsRepository: LabsRepository) : ViewModel() {
     }
 
     fun getLabContent(id: Long): LabContent? = LabsContent.allLabs.find { it.id == id }
+
+    /** Re-reads labs + progress (called when the list screen resumes). */
+    fun refresh() {
+        loadLabs()
+    }
+
+    /** Persists a submission: attempt record + best-score progress. */
+    fun saveAttempt(labId: Long, answers: Map<Int, Int>, score: Int) {
+        viewModelScope.launch {
+            runCatching {
+                labsRepository.insertAttempt(
+                    LabAttemptEntity(
+                        labId = labId,
+                        answers = answers.toString(),
+                        score = score,
+                        completedAt = if (score >= 70) System.currentTimeMillis() else null
+                    )
+                )
+                val existing = labsRepository.getProgressByLabId(labId)
+                if (existing == null) {
+                    labsRepository.insertProgress(
+                        LabProgressEntity(
+                            labId = labId,
+                            completed = score >= 70,
+                            score = score,
+                            attempts = 1,
+                            lastAttemptAt = System.currentTimeMillis()
+                        )
+                    )
+                } else {
+                    labsRepository.updateProgress(
+                        labId = labId,
+                        completed = existing.completed || score >= 70,
+                        score = maxOf(existing.score, score)
+                    )
+                }
+            }
+        }
+    }
 }

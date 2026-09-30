@@ -3,6 +3,7 @@ package com.cyberfusion.ui.features.ai
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cyberfusion.core.agent.AgentMemoryStore
 import com.cyberfusion.core.agent.AgentRequest
 import com.cyberfusion.core.agent.AgentService
 import com.cyberfusion.core.agent.AgentStatus
@@ -34,13 +35,15 @@ data class ChatUiState(
     val error: String? = null,
     val conversationTitle: String = "New Chat",
     val lastReport: AgentReport? = null,
-    val reportFilePath: String? = null
+    val reportFilePath: String? = null,
+    val memoryCount: Int = 0
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModel(
     private val agentService: AgentService,
     private val conversationRepository: ConversationRepository,
+    private val memoryStore: AgentMemoryStore,
     @Suppress("unused") private val appContext: Context
 ) : ViewModel() {
 
@@ -48,6 +51,19 @@ class ChatViewModel(
     private val isLoading = MutableStateFlow(false)
     private val error = MutableStateFlow<String?>(null)
     private val lastReport = MutableStateFlow<AgentReport?>(null)
+    private val memoryCount = MutableStateFlow(0)
+
+    init {
+        viewModelScope.launch {
+            conversationId.value = conversationRepository.getActiveConversation()?.id
+            refreshMemoryCount()
+        }
+    }
+
+    private suspend fun refreshMemoryCount() {
+        runCatching { memoryStore.count() }
+            .onSuccess { memoryCount.value = it }
+    }
 
     private val messagesFlow = conversationId
         .flatMapLatest { id ->
@@ -65,23 +81,19 @@ class ChatViewModel(
         }
 
     val uiState: StateFlow<ChatUiState> = combine(
-        messagesFlow, titleFlow, isLoading, combine(error, lastReport) { e, r -> e to r }
-    ) { messages, title, loading, (err, report) ->
+        messagesFlow, titleFlow, isLoading,
+        combine(error, lastReport, memoryCount) { e, r, m -> Triple(e, r, m) }
+    ) { messages, title, loading, (err, report, memories) ->
         ChatUiState(
             messages = messages,
             isLoading = loading,
             error = err,
             conversationTitle = title,
             lastReport = report,
-            reportFilePath = report?.filePath
+            reportFilePath = report?.filePath,
+            memoryCount = memories
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
-
-    init {
-        viewModelScope.launch {
-            conversationId.value = conversationRepository.getActiveConversation()?.id
-        }
-    }
 
     fun sendMessage(text: String) {
         val content = text.trim()
@@ -119,6 +131,7 @@ class ChatViewModel(
                 error.value = e.message
             } finally {
                 isLoading.value = false
+                refreshMemoryCount()
             }
         }
     }

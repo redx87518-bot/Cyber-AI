@@ -35,9 +35,10 @@ import com.cyberfusion.core.database.room.entity.*
         SettingEntity::class,
         ApiCredentialEntity::class,
         ConversationEntity::class,
-        MessageEntity::class
+        MessageEntity::class,
+        AgentMemoryEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
